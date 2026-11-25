@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
-import { Save, Crosshair, User as UserIcon } from 'lucide-react';
+import { Save, User as UserIcon } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getErrorMessage } from '../../services/api';
-import { LANGUAGES, PRESET_LOCATIONS, ROLE_LABELS } from '../../utils/constants';
-import { LocationPickerMap } from '../../components/ServiceMap';
+import { LANGUAGES, ROLE_LABELS } from '../../utils/constants';
+import CurrentLocationPicker from '../../components/location/CurrentLocationPicker';
 
 export default function ProfileSettingsPage() {
   const { user, updateProfile } = useAuth();
@@ -16,35 +16,30 @@ export default function ProfileSettingsPage() {
   const [village, setVillage] = useState(user?.village || '');
   const [district, setDistrict] = useState(user?.district || '');
   const [stateName, setStateName] = useState(user?.state || '');
+  const [primaryCrop, setPrimaryCrop] = useState(user?.primaryCrop || '');
+  const [farmSize, setFarmSize] = useState(user?.farmSize ?? '');
+  const [skills, setSkills] = useState((user?.skills || []).join(', '));
+  const [experience, setExperience] = useState(user?.experience || '');
+  const [availability, setAvailability] = useState(user?.availability ?? true);
   const [address, setAddress] = useState(user?.location?.address || '');
-  const [lat, setLat] = useState(user?.location?.lat ?? 18.1517);
-  const [lng, setLng] = useState(user?.location?.lng ?? 74.5777);
+  const [gpsCoords, setGpsCoords] = useState(
+    user?.location?.lat !== null && user?.location?.lng !== null
+      ? { lat: user?.location?.lat, lng: user?.location?.lng }
+      : null
+  );
 
-  function detectGps() {
-    if (!navigator.geolocation) {
-      toast.error('Geolocation not supported.');
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setLat(Number(pos.coords.latitude.toFixed(5)));
-        setLng(Number(pos.coords.longitude.toFixed(5)));
-        toast.success('GPS coordinates updated.');
-      },
-      () => toast.error('Location permission denied.')
-    );
+  function handleGpsCaptured(loc) {
+    setGpsCoords({ lat: loc.lat, lng: loc.lng });
+    if (loc.village) setVillage(loc.village);
+    if (loc.district) setDistrict(loc.district);
+    if (loc.state) setStateName(loc.state);
+    if (loc.formattedAddress) setAddress(loc.formattedAddress);
   }
 
-  function applyPreset(e) {
-    const idx = e.target.value;
-    if (idx === '') return;
-    const p = PRESET_LOCATIONS[Number(idx)];
-    if (!p) return;
-    setVillage(p.village);
-    setDistrict(p.district);
-    setStateName(p.state);
-    setLat(p.lat);
-    setLng(p.lng);
+  function handleRegionFallback(region) {
+    setVillage(region.village);
+    setDistrict(region.district);
+    setStateName(region.state);
   }
 
   async function handleSubmit(e) {
@@ -58,9 +53,14 @@ export default function ProfileSettingsPage() {
         village,
         district,
         state: stateName,
+        primaryCrop,
+        farmSize: farmSize === '' ? null : Number(farmSize),
+        skills,
+        experience,
+        availability,
         location: {
-          lat: lat === '' ? null : Number(lat),
-          lng: lng === '' ? null : Number(lng),
+          lat: gpsCoords?.lat ?? null,
+          lng: gpsCoords?.lng ?? null,
           address,
         },
       });
@@ -82,7 +82,7 @@ export default function ProfileSettingsPage() {
           <div>
             <h1 className="text-2xl font-bold text-forest-900">Profile Settings</h1>
             <p className="text-xs text-slate-500">
-              {user?.email} · Role: {ROLE_LABELS[user?.role]}
+              {user?.email || user?.phone} · Role: {ROLE_LABELS[user?.role]}
             </p>
           </div>
         </div>
@@ -98,7 +98,7 @@ export default function ProfileSettingsPage() {
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-earth-200 text-sm"
+                className="w-full min-h-[44px] px-3.5 rounded-xl border border-earth-200 text-sm"
               />
             </div>
             <div>
@@ -110,7 +110,7 @@ export default function ProfileSettingsPage() {
                 required
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-earth-200 text-sm"
+                className="w-full min-h-[44px] px-3.5 rounded-xl border border-earth-200 text-sm"
               />
             </div>
             <div>
@@ -120,7 +120,7 @@ export default function ProfileSettingsPage() {
               <select
                 value={language}
                 onChange={(e) => setLanguage(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-earth-200 text-sm bg-white"
+                className="w-full min-h-[44px] px-3.5 rounded-xl border border-earth-200 text-sm bg-white"
               >
                 {LANGUAGES.map((l) => (
                   <option key={l} value={l}>
@@ -137,10 +137,90 @@ export default function ProfileSettingsPage() {
                 type="text"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-earth-200 text-sm"
+                className="w-full min-h-[44px] px-3.5 rounded-xl border border-earth-200 text-sm"
               />
             </div>
+
+            {user?.role === 'farmer' && (
+              <>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Primary Crop
+                  </label>
+                  <input
+                    type="text"
+                    value={primaryCrop}
+                    onChange={(e) => setPrimaryCrop(e.target.value)}
+                    className="w-full min-h-[44px] px-3.5 rounded-xl border border-earth-200 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Farm Size (Acres)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={farmSize}
+                    onChange={(e) => setFarmSize(e.target.value)}
+                    className="w-full min-h-[44px] px-3.5 rounded-xl border border-earth-200 text-sm"
+                  />
+                </div>
+              </>
+            )}
+
+            {user?.role === 'labour_provider' && (
+              <>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Skills (comma-separated)
+                  </label>
+                  <input
+                    type="text"
+                    value={skills}
+                    onChange={(e) => setSkills(e.target.value)}
+                    className="w-full min-h-[44px] px-3.5 rounded-xl border border-earth-200 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Experience
+                  </label>
+                  <input
+                    type="text"
+                    value={experience}
+                    onChange={(e) => setExperience(e.target.value)}
+                    className="w-full min-h-[44px] px-3.5 rounded-xl border border-earth-200 text-sm"
+                  />
+                </div>
+                <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-700 sm:col-span-2">
+                  <input
+                    type="checkbox"
+                    checked={availability}
+                    onChange={(e) => setAvailability(e.target.checked)}
+                    className="rounded border-earth-200 text-forest-700"
+                  />
+                  Currently available for farm work requests
+                </label>
+              </>
+            )}
           </div>
+
+          <CurrentLocationPicker
+            title="Saved GPS Location"
+            initialLocation={{
+              lat: gpsCoords?.lat,
+              lng: gpsCoords?.lng,
+              village,
+              district,
+              state: stateName,
+              address,
+            }}
+            onLocationCaptured={handleGpsCaptured}
+            onRegionFallbackChange={handleRegionFallback}
+            showMapPreview
+          />
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
@@ -151,7 +231,7 @@ export default function ProfileSettingsPage() {
                 type="text"
                 value={village}
                 onChange={(e) => setVillage(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-earth-200 text-sm"
+                className="w-full min-h-[44px] px-3.5 rounded-xl border border-earth-200 text-sm"
               />
             </div>
             <div>
@@ -162,7 +242,7 @@ export default function ProfileSettingsPage() {
                 type="text"
                 value={district}
                 onChange={(e) => setDistrict(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-earth-200 text-sm"
+                className="w-full min-h-[44px] px-3.5 rounded-xl border border-earth-200 text-sm"
               />
             </div>
             <div>
@@ -173,55 +253,15 @@ export default function ProfileSettingsPage() {
                 type="text"
                 value={stateName}
                 onChange={(e) => setStateName(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-earth-200 text-sm"
+                className="w-full min-h-[44px] px-3.5 rounded-xl border border-earth-200 text-sm"
               />
             </div>
-          </div>
-
-          <div className="space-y-2 pt-2 border-t border-earth-200">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="text-xs font-semibold text-slate-700">
-                Saved Coordinates ({lat || '—'}, {lng || '—'})
-              </span>
-              <div className="flex gap-2">
-                <select
-                  onChange={applyPreset}
-                  defaultValue=""
-                  className="px-2.5 py-1.5 rounded-lg border border-earth-200 text-xs bg-earth-50"
-                >
-                  <option value="" disabled>
-                    Pick Preset Town...
-                  </option>
-                  {PRESET_LOCATIONS.map((p, idx) => (
-                    <option key={p.label} value={idx}>
-                      {p.label}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  onClick={detectGps}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-forest-50 text-forest-700 text-xs font-semibold"
-                >
-                  <Crosshair className="w-3.5 h-3.5" /> GPS
-                </button>
-              </div>
-            </div>
-            <LocationPickerMap
-              lat={lat}
-              lng={lng}
-              onSelect={(newLat, newLng) => {
-                setLat(newLat);
-                setLng(newLng);
-              }}
-              height="220px"
-            />
           </div>
 
           <button
             type="submit"
             disabled={saving}
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-forest-700 hover:bg-forest-800 text-white font-semibold text-sm disabled:opacity-60"
+            className="min-h-[48px] inline-flex items-center gap-2 px-6 rounded-xl bg-forest-700 hover:bg-forest-800 text-white font-semibold text-sm disabled:opacity-60"
           >
             <Save className="w-4 h-4" />
             {saving ? 'Saving...' : 'Save Profile'}

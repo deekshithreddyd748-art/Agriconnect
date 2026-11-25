@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   Tractor,
   Users,
@@ -13,8 +14,10 @@ import {
   TrendingUp,
   CalendarCheck,
   Quote,
+  PlayCircle,
 } from 'lucide-react';
 import api from '../../services/api';
+import LanguageSwitcher from '../../components/LanguageSwitcher';
 
 const SAMPLE_TESTIMONIALS = [
   {
@@ -38,6 +41,7 @@ const SAMPLE_TESTIMONIALS = [
 ];
 
 export default function LandingPage() {
+  const { t } = useTranslation();
   const [stats, setStats] = useState(null);
 
   useEffect(() => {
@@ -57,7 +61,7 @@ export default function LandingPage() {
   return (
     <div>
       {/* Hero Section with Real Indian Farmer Photography */}
-      <section className="relative overflow-hidden bg-forest-700 min-h-[540px] lg:min-h-[600px] flex items-center">
+      <section className="relative overflow-hidden bg-forest-700 min-h-[560px] lg:min-h-[620px] flex items-center">
         <img
           src="/images/hero-farmer.jpg"
           alt="Indian farmer working in a lush green agricultural field"
@@ -68,50 +72,62 @@ export default function LandingPage() {
           aria-hidden="true"
         />
 
-        <div className="relative z-10 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-14 lg:py-20">
-          <div className="max-w-2xl space-y-6 text-white">
+        <div className="relative z-10 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-12 lg:py-20">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/15 backdrop-blur-sm border border-white/25 text-xs font-semibold text-forest-100">
               <Compass className="w-3.5 h-3.5 text-fresh-500" />
-              AgriConnect • Hyperlocal Rural Service Network
+              {t('landing.badge')}
             </div>
+            <LanguageSwitcher />
+          </div>
 
-            <h1 className="text-3xl sm:text-5xl lg:text-[52px] font-extrabold tracking-tight leading-[1.12] text-white">
-              Empowering Farmers. Connecting Resources.
+          <div className="max-w-2xl space-y-6 text-white">
+            <h1 className="text-3xl sm:text-5xl lg:text-[52px] font-extrabold tracking-tight leading-[1.14] text-white">
+              {t('landing.heroTitle')}
             </h1>
 
             <p className="text-base sm:text-lg text-forest-100 leading-relaxed max-w-xl">
-              Discover agricultural machinery, skilled labour, and post-harvest
-              facilities available near your farm.
+              {t('landing.heroSubtitle')}
             </p>
 
             <div className="flex flex-wrap items-center gap-3 pt-1">
               <Link
                 to="/machinery"
-                className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-fresh-500 hover:bg-fresh-600 text-forest-900 font-bold text-sm shadow-sm transition-colors"
+                className="inline-flex items-center gap-2 px-5 min-h-[48px] rounded-xl bg-fresh-500 hover:bg-fresh-600 text-forest-900 font-bold text-sm shadow-sm transition-colors"
               >
                 <Tractor className="w-4 h-4" />
-                Find Equipment
+                {t('landing.findEquipment')}
               </Link>
               <Link
                 to="/labour"
-                className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-white hover:bg-earth-100 text-forest-800 font-bold text-sm shadow-sm transition-colors"
+                className="inline-flex items-center gap-2 px-5 min-h-[48px] rounded-xl bg-white hover:bg-earth-100 text-forest-800 font-bold text-sm shadow-sm transition-colors"
               >
                 <Users className="w-4 h-4" />
-                Find Labour
+                {t('landing.findLabour')}
               </Link>
               <Link
                 to="/facilities"
-                className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-white/15 hover:bg-white/25 text-white border border-white/30 font-semibold text-sm backdrop-blur-sm transition-colors"
+                className="inline-flex items-center gap-2 px-5 min-h-[48px] rounded-xl bg-white/15 hover:bg-white/25 text-white border border-white/30 font-semibold text-sm backdrop-blur-sm transition-colors"
               >
                 <Warehouse className="w-4 h-4" />
-                Explore Facilities
+                {t('landing.exploreFacilities')}
               </Link>
               <Link
                 to="/register"
-                className="inline-flex items-center gap-2 px-5 py-3 rounded-xl border border-fresh-500 text-forest-100 hover:bg-fresh-500/20 font-semibold text-sm transition-colors"
+                className="inline-flex items-center gap-2 px-5 min-h-[48px] rounded-xl border border-fresh-500 text-forest-100 hover:bg-fresh-500/20 font-semibold text-sm transition-colors"
               >
-                Join AgriConnect
+                {t('landing.joinAgriconnect')}
                 <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+
+            <div className="pt-1">
+              <Link
+                to="/labour-demo"
+                className="inline-flex items-center gap-2 px-4 min-h-[44px] rounded-xl bg-harvest-600 hover:bg-harvest-700 text-white font-semibold text-sm shadow-sm transition-colors"
+              >
+                <PlayCircle className="w-4 h-4" />
+                {t('landing.tryLabourDemo')}
               </Link>
             </div>
           </div>
@@ -168,7 +184,7 @@ export default function LandingPage() {
               to="/machinery"
               className="mt-6 inline-flex items-center gap-1.5 text-sm font-semibold text-forest-700 hover:text-forest-900"
             >
-              Find Equipment <ArrowRight className="w-4 h-4" />
+              {t('landing.findEquipment')} <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
 
@@ -179,15 +195,15 @@ export default function LandingPage() {
               </div>
               <h3 className="text-xl font-bold text-slate-900">Agricultural Labour</h3>
               <p className="text-sm text-slate-600 mt-2 leading-relaxed">
-                Hire experienced local teams for harvesting, sowing, transplantation,
-                weeding, spraying, and irrigation with transparent wages.
+                Post labour requests or hire skilled crews for harvesting, sowing,
+                transplantation, weeding, spraying, and irrigation.
               </p>
             </div>
             <Link
               to="/labour"
               className="mt-6 inline-flex items-center gap-1.5 text-sm font-semibold text-forest-700 hover:text-forest-900"
             >
-              Find Labour <ArrowRight className="w-4 h-4" />
+              {t('landing.findLabour')} <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
 
@@ -208,7 +224,7 @@ export default function LandingPage() {
               to="/facilities"
               className="mt-6 inline-flex items-center gap-1.5 text-sm font-semibold text-forest-700 hover:text-forest-900"
             >
-              Explore Facilities <ArrowRight className="w-4 h-4" />
+              {t('landing.exploreFacilities')} <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
         </div>
@@ -244,11 +260,11 @@ export default function LandingPage() {
                 2
               </div>
               <h3 className="font-bold text-slate-900 text-lg">
-                Compare & Request Booking
+                Post Labour or Book Equipment
               </h3>
               <p className="text-sm text-slate-600 leading-relaxed">
-                Inspect equipment specs, labour skills, or storage capacity, select
-                dates, and submit a booking request with an instant cost estimate.
+                Request farm workers by daily wage, or book nearby machinery and cold
+                storage with an instant transparent cost estimate.
               </p>
             </div>
             <div className="p-6 rounded-2xl bg-earth-50 border border-earth-200 space-y-2.5">
@@ -259,8 +275,8 @@ export default function LandingPage() {
                 Track Confirmation Live
               </h3>
               <p className="text-sm text-slate-600 leading-relaxed">
-                Providers accept or reject requests from their dashboard, and farmers
-                track every status update through completion.
+                Accept local worker applications or track provider approvals right from
+                your mobile-friendly dashboard.
               </p>
             </div>
           </div>
@@ -280,25 +296,30 @@ export default function LandingPage() {
             <ul className="space-y-3 text-sm text-slate-700">
               <li className="flex items-start gap-2.5">
                 <CheckCircle2 className="w-4 h-4 text-fresh-600 shrink-0 mt-0.5" />
-                Locate nearby tractors, crews, and cold storage on an interactive
-                OpenStreetMap view.
+                Register quickly with your mobile number in 6 regional Indian languages.
               </li>
               <li className="flex items-start gap-2.5">
                 <CheckCircle2 className="w-4 h-4 text-fresh-600 shrink-0 mt-0.5" />
-                See transparent hourly, daily, or per-acre rates before booking.
+                Post farm labour needs with clear daily wages and review local worker
+                applications.
               </li>
               <li className="flex items-start gap-2.5">
                 <CheckCircle2 className="w-4 h-4 text-fresh-600 shrink-0 mt-0.5" />
-                Avoid double-booked dates with real-time availability and booking
-                history tracking.
+                Locate nearby tractors and cold storage on an interactive OpenStreetMap view.
               </li>
             </ul>
-            <div className="pt-2">
+            <div className="pt-2 flex flex-wrap gap-4">
               <Link
                 to="/nearby-map"
                 className="inline-flex items-center gap-1.5 text-sm font-bold text-forest-700 hover:underline"
               >
                 <MapPin className="w-4 h-4" /> View Nearby Services Map
+              </Link>
+              <Link
+                to="/labour-demo"
+                className="inline-flex items-center gap-1.5 text-sm font-bold text-harvest-700 hover:underline"
+              >
+                <PlayCircle className="w-4 h-4" /> {t('landing.tryLabourDemo')}
               </Link>
             </div>
           </div>
@@ -318,7 +339,7 @@ export default function LandingPage() {
               </li>
               <li className="flex items-start gap-2.5">
                 <CalendarCheck className="w-4 h-4 text-fresh-600 shrink-0 mt-0.5" />
-                Accept or reject incoming requests and toggle availability in one click.
+                Accept or reject incoming requests and apply directly to open farmer jobs.
               </li>
               <li className="flex items-start gap-2.5">
                 <TrendingUp className="w-4 h-4 text-fresh-600 shrink-0 mt-0.5" />
@@ -355,20 +376,20 @@ export default function LandingPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {SAMPLE_TESTIMONIALS.map((t) => (
+            {SAMPLE_TESTIMONIALS.map((tItem) => (
               <div
-                key={t.name}
+                key={tItem.name}
                 className="p-6 rounded-2xl bg-earth-50 border border-earth-200 space-y-4 flex flex-col justify-between"
               >
                 <div className="space-y-3">
                   <Quote className="w-6 h-6 text-fresh-600" />
                   <p className="text-sm text-slate-700 leading-relaxed">
-                    &ldquo;{t.quote}&rdquo;
+                    &ldquo;{tItem.quote}&rdquo;
                   </p>
                 </div>
                 <div className="pt-3 border-t border-earth-200">
-                  <div className="font-bold text-sm text-slate-900">{t.name}</div>
-                  <div className="text-xs text-slate-500">{t.role}</div>
+                  <div className="font-bold text-sm text-slate-900">{tItem.name}</div>
+                  <div className="text-xs text-slate-500">{tItem.role}</div>
                 </div>
               </div>
             ))}

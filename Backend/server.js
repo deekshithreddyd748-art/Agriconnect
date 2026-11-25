@@ -10,6 +10,7 @@ import { ensureDemoData } from './seed/seedData.js';
 import authRoutes from './routes/authRoutes.js';
 import equipmentRoutes from './routes/equipmentRoutes.js';
 import labourRoutes from './routes/labourRoutes.js';
+import labourRequestRoutes from './routes/labourRequestRoutes.js';
 import facilityRoutes from './routes/facilityRoutes.js';
 import bookingRoutes from './routes/bookingRoutes.js';
 import discoveryRoutes from './routes/discoveryRoutes.js';
@@ -56,6 +57,7 @@ app.get('/api/health', (_req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/equipment', equipmentRoutes);
 app.use('/api/labour', labourRoutes);
+app.use('/api/labour-requests', labourRequestRoutes);
 app.use('/api/facilities', facilityRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/discovery', discoveryRoutes);

@@ -1,16 +1,15 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { ArrowLeft, Save, Crosshair } from 'lucide-react';
+import { ArrowLeft, Save } from 'lucide-react';
 import api, { getErrorMessage } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import {
   EQUIPMENT_CATEGORIES,
   FACILITY_CATEGORIES,
   LABOUR_CATEGORIES,
-  PRESET_LOCATIONS,
 } from '../../utils/constants';
-import { LocationPickerMap } from '../../components/ServiceMap';
+import CurrentLocationPicker from '../../components/location/CurrentLocationPicker';
 
 const ROLE_TO_TYPE = {
   equipment_owner: 'equipment',
@@ -73,8 +72,8 @@ export default function ListingFormPage() {
     district: user?.district || '',
     state: user?.state || '',
     address: user?.location?.address || '',
-    lat: user?.location?.lat ?? 18.1517,
-    lng: user?.location?.lng ?? 74.5777,
+    lat: user?.location?.lat ?? null,
+    lng: user?.location?.lng ?? null,
   });
 
   useEffect(() => {
@@ -111,8 +110,8 @@ export default function ListingFormPage() {
           district: d.location?.district || '',
           state: d.location?.state || '',
           address: d.location?.address || '',
-          lat: d.location?.lat ?? 18.1517,
-          lng: d.location?.lng ?? 74.5777,
+          lat: d.location?.lat ?? null,
+          lng: d.location?.lng ?? null,
         }));
       })
       .catch((err) => toast.error(getErrorMessage(err, 'Could not load listing.')));
@@ -122,34 +121,25 @@ export default function ListingFormPage() {
     setForm((prev) => ({ ...prev, [key]: val }));
   }
 
-  function applyPreset(e) {
-    const idx = e.target.value;
-    if (idx === '') return;
-    const p = PRESET_LOCATIONS[Number(idx)];
-    if (!p) return;
+  function handleGpsCaptured(loc) {
     setForm((prev) => ({
       ...prev,
-      village: p.village,
-      district: p.district,
-      state: p.state,
-      lat: p.lat,
-      lng: p.lng,
+      lat: loc.lat,
+      lng: loc.lng,
+      village: loc.village || prev.village,
+      district: loc.district || prev.district,
+      state: loc.state || prev.state,
+      address: loc.formattedAddress || prev.address,
     }));
   }
 
-  function detectGps() {
-    if (!navigator.geolocation) return toast.error('Geolocation unavailable.');
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setForm((prev) => ({
-          ...prev,
-          lat: Number(pos.coords.latitude.toFixed(5)),
-          lng: Number(pos.coords.longitude.toFixed(5)),
-        }));
-        toast.success('GPS coordinates set.');
-      },
-      () => toast.error('GPS permission denied.')
-    );
+  function handleRegionFallback(region) {
+    setForm((prev) => ({
+      ...prev,
+      village: region.village,
+      district: region.district,
+      state: region.state,
+    }));
   }
 
   async function handleSubmit(e) {
@@ -161,8 +151,8 @@ export default function ListingFormPage() {
       district: form.district,
       state: form.state,
       address: form.address,
-      lat: form.lat === '' ? null : Number(form.lat),
-      lng: form.lng === '' ? null : Number(form.lng),
+      lat: form.lat,
+      lng: form.lng,
     };
 
     try {
@@ -290,7 +280,7 @@ export default function ListingFormPage() {
                       ? 'e.g., GreenHarvest 12-Member Squad'
                       : 'e.g., Sahyadri Cold Storage'
                 }
-                className="w-full px-3.5 py-2.5 rounded-xl border border-earth-200 text-sm"
+                className="w-full min-h-[44px] px-3.5 rounded-xl border border-earth-200 text-sm"
               />
             </div>
 
@@ -301,7 +291,7 @@ export default function ListingFormPage() {
               <select
                 value={form.category}
                 onChange={(e) => updateField('category', e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-earth-200 text-sm bg-white"
+                className="w-full min-h-[44px] px-3.5 rounded-xl border border-earth-200 text-sm bg-white"
               >
                 {categories.map((cat) => (
                   <option key={cat} value={cat}>
@@ -337,7 +327,7 @@ export default function ListingFormPage() {
                   required
                   value={form.price}
                   onChange={(e) => updateField('price', e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-earth-200 text-sm"
+                  className="w-full min-h-[44px] px-3.5 rounded-xl border border-earth-200 text-sm"
                 />
               </div>
               <div>
@@ -347,7 +337,7 @@ export default function ListingFormPage() {
                 <select
                   value={form.priceUnit}
                   onChange={(e) => updateField('priceUnit', e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-earth-200 text-sm bg-white"
+                  className="w-full min-h-[44px] px-3.5 rounded-xl border border-earth-200 text-sm bg-white"
                 >
                   <option value="hour">per hour</option>
                   <option value="day">per day</option>
@@ -363,7 +353,7 @@ export default function ListingFormPage() {
                   min="1"
                   value={form.serviceRadius}
                   onChange={(e) => updateField('serviceRadius', e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-earth-200 text-sm"
+                  className="w-full min-h-[44px] px-3.5 rounded-xl border border-earth-200 text-sm"
                 />
               </div>
               <div>
@@ -374,7 +364,7 @@ export default function ListingFormPage() {
                   type="text"
                   value={form.brand}
                   onChange={(e) => updateField('brand', e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-earth-200 text-sm"
+                  className="w-full min-h-[44px] px-3.5 rounded-xl border border-earth-200 text-sm"
                 />
               </div>
               <div>
@@ -385,7 +375,7 @@ export default function ListingFormPage() {
                   type="text"
                   value={form.horsepower}
                   onChange={(e) => updateField('horsepower', e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-earth-200 text-sm"
+                  className="w-full min-h-[44px] px-3.5 rounded-xl border border-earth-200 text-sm"
                 />
               </div>
               <div>
@@ -396,7 +386,7 @@ export default function ListingFormPage() {
                   type="text"
                   value={form.year}
                   onChange={(e) => updateField('year', e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-earth-200 text-sm"
+                  className="w-full min-h-[44px] px-3.5 rounded-xl border border-earth-200 text-sm"
                 />
               </div>
             </div>
@@ -414,7 +404,7 @@ export default function ListingFormPage() {
                   required
                   value={form.workersAvailable}
                   onChange={(e) => updateField('workersAvailable', e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-earth-200 text-sm"
+                  className="w-full min-h-[44px] px-3.5 rounded-xl border border-earth-200 text-sm"
                 />
               </div>
               <div>
@@ -427,7 +417,7 @@ export default function ListingFormPage() {
                   required
                   value={form.pricePerWorker}
                   onChange={(e) => updateField('pricePerWorker', e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-earth-200 text-sm"
+                  className="w-full min-h-[44px] px-3.5 rounded-xl border border-earth-200 text-sm"
                 />
               </div>
               <div>
@@ -437,7 +427,7 @@ export default function ListingFormPage() {
                 <select
                   value={form.priceUnit}
                   onChange={(e) => updateField('priceUnit', e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-earth-200 text-sm bg-white"
+                  className="w-full min-h-[44px] px-3.5 rounded-xl border border-earth-200 text-sm bg-white"
                 >
                   <option value="day">per day</option>
                   <option value="hour">per hour</option>
@@ -452,7 +442,7 @@ export default function ListingFormPage() {
                   value={form.experience}
                   onChange={(e) => updateField('experience', e.target.value)}
                   placeholder="e.g., 6+ years harvesting & nursery"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-earth-200 text-sm"
+                  className="w-full min-h-[44px] px-3.5 rounded-xl border border-earth-200 text-sm"
                 />
               </div>
               <div className="sm:col-span-2">
@@ -464,7 +454,7 @@ export default function ListingFormPage() {
                   value={form.skills}
                   onChange={(e) => updateField('skills', e.target.value)}
                   placeholder="Sugarcane Cutting, Paddy Transplanting, Pruning"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-earth-200 text-sm"
+                  className="w-full min-h-[44px] px-3.5 rounded-xl border border-earth-200 text-sm"
                 />
               </div>
               <div className="sm:col-span-2">
@@ -476,7 +466,7 @@ export default function ListingFormPage() {
                   value={form.availableDates}
                   onChange={(e) => updateField('availableDates', e.target.value)}
                   placeholder="2026-11-28, 2026-11-29"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-earth-200 text-sm"
+                  className="w-full min-h-[44px] px-3.5 rounded-xl border border-earth-200 text-sm"
                 />
               </div>
             </div>
@@ -494,7 +484,7 @@ export default function ListingFormPage() {
                   required
                   value={form.capacity}
                   onChange={(e) => updateField('capacity', e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-earth-200 text-sm"
+                  className="w-full min-h-[44px] px-3.5 rounded-xl border border-earth-200 text-sm"
                 />
               </div>
               <div>
@@ -507,7 +497,7 @@ export default function ListingFormPage() {
                   required
                   value={form.availableCapacity}
                   onChange={(e) => updateField('availableCapacity', e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-earth-200 text-sm"
+                  className="w-full min-h-[44px] px-3.5 rounded-xl border border-earth-200 text-sm"
                 />
               </div>
               <div>
@@ -518,7 +508,7 @@ export default function ListingFormPage() {
                   type="text"
                   value={form.capacityUnit}
                   onChange={(e) => updateField('capacityUnit', e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-earth-200 text-sm"
+                  className="w-full min-h-[44px] px-3.5 rounded-xl border border-earth-200 text-sm"
                 />
               </div>
               <div>
@@ -531,7 +521,7 @@ export default function ListingFormPage() {
                   required
                   value={form.price}
                   onChange={(e) => updateField('price', e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-earth-200 text-sm"
+                  className="w-full min-h-[44px] px-3.5 rounded-xl border border-earth-200 text-sm"
                 />
               </div>
               <div>
@@ -543,7 +533,7 @@ export default function ListingFormPage() {
                   value={form.priceUnit}
                   onChange={(e) => updateField('priceUnit', e.target.value)}
                   placeholder="per ton/day"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-earth-200 text-sm"
+                  className="w-full min-h-[44px] px-3.5 rounded-xl border border-earth-200 text-sm"
                 />
               </div>
               <div>
@@ -554,7 +544,7 @@ export default function ListingFormPage() {
                   type="text"
                   value={form.operatingHours}
                   onChange={(e) => updateField('operatingHours', e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-earth-200 text-sm"
+                  className="w-full min-h-[44px] px-3.5 rounded-xl border border-earth-200 text-sm"
                 />
               </div>
               <div className="sm:col-span-2">
@@ -566,7 +556,7 @@ export default function ListingFormPage() {
                   value={form.servicesOffered}
                   onChange={(e) => updateField('servicesOffered', e.target.value)}
                   placeholder="Cold Storage, Pre-cooling, Grading"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-earth-200 text-sm"
+                  className="w-full min-h-[44px] px-3.5 rounded-xl border border-earth-200 text-sm"
                 />
               </div>
               <div>
@@ -577,7 +567,7 @@ export default function ListingFormPage() {
                   type="text"
                   value={form.contactPhone}
                   onChange={(e) => updateField('contactPhone', e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-earth-200 text-sm"
+                  className="w-full min-h-[44px] px-3.5 rounded-xl border border-earth-200 text-sm"
                 />
               </div>
             </div>
@@ -598,35 +588,21 @@ export default function ListingFormPage() {
             </div>
           )}
 
-          <div className="pt-3 border-t border-earth-200 space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="text-sm font-semibold text-slate-800">
-                Service Location
-              </span>
-              <div className="flex gap-2">
-                <select
-                  onChange={applyPreset}
-                  defaultValue=""
-                  className="px-2.5 py-1.5 rounded-lg border border-earth-200 text-xs bg-earth-50"
-                >
-                  <option value="" disabled>
-                    Pick Town...
-                  </option>
-                  {PRESET_LOCATIONS.map((p, idx) => (
-                    <option key={p.label} value={idx}>
-                      {p.label}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  onClick={detectGps}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-forest-50 text-forest-700 text-xs font-semibold"
-                >
-                  <Crosshair className="w-3.5 h-3.5" /> GPS
-                </button>
-              </div>
-            </div>
+          <div className="pt-3 border-t border-earth-200 space-y-4">
+            <CurrentLocationPicker
+              title="Service GPS Location (Uses Saved Profile GPS or Tap to Refresh)"
+              initialLocation={{
+                lat: form.lat,
+                lng: form.lng,
+                village: form.village,
+                district: form.district,
+                state: form.state,
+                address: form.address,
+              }}
+              onLocationCaptured={handleGpsCaptured}
+              onRegionFallbackChange={handleRegionFallback}
+              showMapPreview
+            />
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <input
@@ -634,32 +610,23 @@ export default function ListingFormPage() {
                 placeholder="Village"
                 value={form.village}
                 onChange={(e) => updateField('village', e.target.value)}
-                className="px-3 py-2 rounded-xl border border-earth-200 text-sm"
+                className="min-h-[44px] px-3 rounded-xl border border-earth-200 text-sm"
               />
               <input
                 type="text"
                 placeholder="District"
                 value={form.district}
                 onChange={(e) => updateField('district', e.target.value)}
-                className="px-3 py-2 rounded-xl border border-earth-200 text-sm"
+                className="min-h-[44px] px-3 rounded-xl border border-earth-200 text-sm"
               />
               <input
                 type="text"
                 placeholder="State"
                 value={form.state}
                 onChange={(e) => updateField('state', e.target.value)}
-                className="px-3 py-2 rounded-xl border border-earth-200 text-sm"
+                className="min-h-[44px] px-3 rounded-xl border border-earth-200 text-sm"
               />
             </div>
-
-            <LocationPickerMap
-              lat={form.lat}
-              lng={form.lng}
-              onSelect={(newLat, newLng) =>
-                setForm((prev) => ({ ...prev, lat: newLat, lng: newLng }))
-              }
-              height="200px"
-            />
           </div>
 
           <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-700">
@@ -675,7 +642,7 @@ export default function ListingFormPage() {
           <button
             type="submit"
             disabled={saving}
-            className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl bg-forest-700 hover:bg-forest-800 text-white font-semibold text-sm disabled:opacity-60"
+            className="w-full min-h-[48px] inline-flex items-center justify-center gap-2 rounded-xl bg-forest-700 hover:bg-forest-800 text-white font-semibold text-sm disabled:opacity-60"
           >
             <Save className="w-4 h-4" />
             {saving ? 'Saving Listing...' : isEdit ? 'Save Changes' : 'Publish Listing'}

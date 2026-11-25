@@ -2,25 +2,17 @@
 
 **Empowering Farmers. Connecting Resources.**
 
-AgriConnect is a responsive, hyperlocal full-stack web platform connecting farmers with nearby agricultural machinery owners, skilled harvesting labour providers, and post-harvest facility operators.
+AgriConnect is a mobile-first, multilingual, hyperlocal agricultural service platform connecting farmers with farm labour, machinery owners, and post-harvest facility operators.
 
 ---
 
-## Key Features
+## New Farmer-Centric Capabilities
 
-- **Hyperlocal Location Discovery**: Browser Geolocation API, quick village/town presets, district & village filtering, click-to-pick Leaflet/OpenStreetMap coordinates, configurable radius (`5 km`, `10 km`, `15 km`, `25 km`), and Haversine distance sorting. Listings without coordinates explicitly report `Location unavailable`.
-- **Machinery Marketplace**: 12 categories of agricultural equipment, search/filter by category, district, max price, and availability, List & Map views, image upload via Multer, and cost estimation.
-- **Agricultural Labour Network**: Crew discovery with `skills`, `experience`, available workers, daily/hourly wages, and available dates.
-- **Post-Harvest Facility Network**: Cold storage, warehouses, drying, sorting, grading, and packaging facilities with live `availableCapacity` tracking.
-- **Complete Booking Lifecycle**: `Pending`, `Accepted`, `Rejected`, `Cancelled`, `Completed` with server-side overlapping booking prevention and role-scoped authorization.
-- **Admin Control Center**: Platform-wide analytics (Recharts), user activation/suspension, listing moderation, reported listing review, and booking oversight.
-
----
-
-## Tech Stack
-
-- **Frontend**: React 18, Vite, Tailwind CSS, React Router DOM, Axios, Lucide React, React Hook Form, Recharts, Leaflet + OpenStreetMap, React Hot Toast
-- **Backend**: Node.js, Express.js, MongoDB + Mongoose ODM, JWT, bcryptjs, Multer, Express Validator, Helmet, CORS
+- **6 Regional Languages (Instant Switch + Persistent)**: `English`, `ಕನ್ನಡ` (Kannada), `हिन्दी` (Hindi), `తెలుగు` (Telugu), `தமிழ்` (Tamil), and `मराठी` (Marathi) via `i18next` and `src/locales/*.json`.
+- **3-Step Mobile OTP Onboarding**: Role selection cards → 10-digit Indian mobile OTP verification (with clearly labelled development mock OTP mode when SMS gateway credentials are unset) → minimal rural profile setup.
+- **Redesigned Farmer Dashboard**: Mobile-first action cards prioritizing **Request Labour**, **Find Equipment**, **Find Facilities**, **My Bookings**, **Labour Demo**, and **Help / How It Works**, plus live notifications.
+- **Request Labour & Worker Discovery Workflow**: Searchable 8-category dropdown with icons, live total cost estimator (`workers × days × dailyWage`), unique `LR-YYYY-XXXX` IDs, open job discovery for Labour Providers, duplicate-application prevention, atomic capacity enforcement (`Open` → `Partially Filled` → `Fully Filled`), and booking confirmation.
+- **Isolated Interactive Labour Demo (`/labour-demo`)**: Complete 5-step interactive simulation stored strictly in local component state so judges and first-time visitors can test the workflow without writing to MongoDB.
 
 ---
 
@@ -32,10 +24,12 @@ AgriConnect is a responsive, hyperlocal full-stack web platform connecting farme
 | `PORT` | `5000` | Express HTTP port |
 | `NODE_ENV` | `development` / `production` | Environment mode |
 | `MONGO_URI` | `mongodb+srv://.../agriconnect` | MongoDB connection string (falls back to embedded local MongoDB in development when unreachable) |
-| `JWT_SECRET` | `<long-random-secret>` | Secret for signing JWTs (never expose in Frontend) |
+| `JWT_SECRET` | `<long-random-secret>` | Secret for signing JWTs and HMAC OTP hashes |
 | `JWT_EXPIRES_IN` | `7d` | Token expiration |
 | `CLIENT_URL` | `http://localhost:5173,https://agriconnect-deekshithreddyd748-6042.vercel.app` | Comma-separated allowed CORS origins |
 | `AUTO_SEED` | `true` | Auto-seed demo data if `User` collection is empty |
+| `ENABLE_DEMO_OTP` | `true` | Enables clearly labelled mock OTP generation when SMS gateway credentials are absent |
+| `TWILIO_ACCOUNT_SID` / `AUTH_TOKEN` / `FROM_NUMBER` | optional | Optional production SMS OTP gateway credentials |
 
 ### Frontend (`Frontend/.env`)
 | Variable | Example Value | Description |
@@ -47,16 +41,14 @@ AgriConnect is a responsive, hyperlocal full-stack web platform connecting farme
 
 ## Local Development
 
-### 1. Backend
 ```bash
+# Terminal 1 (Backend)
 cd Backend
 cp .env.example .env
 npm install
 npm run dev
-```
 
-### 2. Frontend
-```bash
+# Terminal 2 (Frontend)
 cd Frontend
 cp .env.example .env
 npm install
@@ -67,38 +59,28 @@ npm run dev
 
 ## Production Deployment
 
-### Backend Deployment (Render / Railway)
-1. Create a free MongoDB Atlas cluster (`M0`) and obtain your `MONGO_URI`.
-2. Create a new **Web Service** pointing to this repository with:
-   - **Root Directory**: `Backend`
-   - **Build Command**: `npm install`
-   - **Start Command**: `npm start`
-3. Set Environment Variables (`NODE_ENV=production`, `MONGO_URI`, `JWT_SECRET`, `JWT_EXPIRES_IN=7d`, `CLIENT_URL=https://agriconnect-deekshithreddyd748-6042.vercel.app`, `AUTO_SEED=true`).
+### Backend (Render / Railway)
+- **Root Directory**: `Backend`
+- **Build Command**: `npm install`
+- **Start Command**: `npm start`
+- **Env Vars**: `NODE_ENV=production`, `MONGO_URI`, `JWT_SECRET`, `JWT_EXPIRES_IN=7d`, `CLIENT_URL=https://agriconnect-deekshithreddyd748-6042.vercel.app`, `AUTO_SEED=true` (plus Twilio vars or `ENABLE_DEMO_OTP=true` for hackathon demos).
 
-### Frontend Deployment (Vercel)
-1. In Vercel Project Settings:
-   - **Root Directory**: `Frontend`
-   - **Framework Preset**: `Vite`
-   - **Build Command**: `npm run build`
-   - **Output Directory**: `dist`
-2. Add Environment Variables:
-   - `VITE_API_URL=https://<your-deployed-backend>/api`
-   - `VITE_ASSET_URL=https://<your-deployed-backend>`
-3. [Frontend/vercel.json](Frontend/vercel.json) configures SPA rewrites so refreshing nested routes (e.g., `/machinery`, `/farmer/dashboard`) resolves cleanly to `/index.html`.
+### Frontend (Vercel)
+- **Root Directory**: `Frontend`
+- **Framework Preset**: `Vite`
+- **Build Command**: `npm run build`
+- **Output Directory**: `dist`
+- **Env Vars**: `VITE_API_URL`, `VITE_ASSET_URL`
+- [Frontend/vercel.json](Frontend/vercel.json) handles SPA rewrites on nested route refreshes.
 
 ---
 
 ## Demo Accounts
 
-| Role | Email | Password |
-| :--- | :--- | :--- |
-| Farmer | `farmer@agriconnect.in` | `Demo@123` |
-| Equipment Owner | `owner@agriconnect.in` | `Demo@123` |
-| Labour Provider | `labour@agriconnect.in` | `Demo@123` |
-| Facility Owner | `facility@agriconnect.in` | `Demo@123` |
-| Administrator | `admin@agriconnect.in` | `Admin@123` |
-
----
-
-## Media & Attribution
-- Hero photograph (`Frontend/public/images/hero-farmer.jpg`) and category vector graphics (`Frontend/public/images/*.svg`) are original assets generated for the AgriConnect project.
+- **Mobile OTP Demo Numbers**: Farmer `9823011223`, Labour Provider `9890177889`
+- **Email / Password Demo Accounts** (1-click fill on `/login`):
+  - Farmer: `farmer@agriconnect.in` / `Demo@123`
+  - Equipment Owner: `owner@agriconnect.in` / `Demo@123`
+  - Labour Provider: `labour@agriconnect.in` / `Demo@123`
+  - Facility Owner: `facility@agriconnect.in` / `Demo@123`
+  - Administrator: `admin@agriconnect.in` / `Admin@123`

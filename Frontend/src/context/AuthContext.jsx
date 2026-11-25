@@ -37,6 +37,27 @@ export function AuthProvider({ children }) {
     return res.data.user;
   }
 
+  async function sendOtp(mobileNumber) {
+    const res = await api.post('/auth/otp/send', { mobileNumber });
+    return res.data;
+  }
+
+  async function verifyOtp(mobileNumber, otp) {
+    const res = await api.post('/auth/otp/verify', { mobileNumber, otp });
+    if (!res.data.isNewUser && res.data.token) {
+      localStorage.setItem('agriconnect_token', res.data.token);
+      setUser(res.data.user);
+    }
+    return res.data;
+  }
+
+  async function completeOtpOnboarding(payload) {
+    const res = await api.post('/auth/otp/complete', payload);
+    localStorage.setItem('agriconnect_token', res.data.token);
+    setUser(res.data.user);
+    return res.data.user;
+  }
+
   async function updateProfile(payload) {
     const res = await api.put('/auth/profile', payload);
     setUser(res.data.user);
@@ -50,7 +71,17 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, login, register, updateProfile, logout }}
+      value={{
+        user,
+        loading,
+        login,
+        register,
+        sendOtp,
+        verifyOtp,
+        completeOtpOnboarding,
+        updateProfile,
+        logout,
+      }}
     >
       {children}
     </AuthContext.Provider>

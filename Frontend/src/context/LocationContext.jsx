@@ -1,105 +1,96 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import toast from 'react-hot-toast';
 import { useAuth } from './AuthContext';
-import { hasValidCoords } from '../utils/distance';
+import { useCurrentLocation } from '../hooks/useCurrentLocation';
+import { isValidCoordinates } from '../services/locationService';
 
 const LocationContext = createContext(null);
-const STORAGE_KEY = 'agriconnect_location';
+const STORAGE_KEY = 'agriconnect_gps_location';
+
+function readStoredLocation() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return isValidCoordinates(parsed?.lat, parsed?.lng) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
 
 export function LocationProvider({ children }) {
   const { user } = useAuth();
-  const [coords, setCoords] = useState(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) return JSON.parse(saved);
-    } catch {
-      // ignore storage errors
-    }
-    return {
-      lat: 18.1517,
-      lng: 74.5777,
-      label: 'Baramati, Pune (Default Demo Location)',
-    };
-  });
+  const [stored] = useState(() => readStoredLocation());
+  const gps = useCurrentLocation(stored);
+
   const [radius, setRadius] = useState(15);
-  const [detecting, setDetecting] = useState(false);
+  const [regionFilter, setRegionFilter] = useState({
+    village: '',
+    district: '',
+    state: '',
+  });
 
   useEffect(() => {
-    if (user && hasValidCoords(user.location)) {
-      const next = {
+    if (user && isValidCoordinates(user.location?.lat, user.location?.lng)) {
+      gps.syncSavedLocation({
         lat: user.location.lat,
         lng: user.location.lng,
-        label:
-          [user.village, user.district].filter(Boolean).join(', ') ||
-          user.location.address ||
-          'Saved Profile Location',
-      };
-      setCoords(next);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+        village: user.village,
+        district: user.district,
+        state: user.state,
+        address: user.location.address,
+      });
     }
-  }, [user]);
+  }, [user, gps.syncSavedLocation]);
 
-  function setManualLocation({ lat, lng, label }) {
-    const parsedLat = Number(lat);
-    const parsedLng = Number(lng);
-    if (!Number.isFinite(parsedLat) || !Number.isFinite(parsedLng)) {
-      toast.error('Please enter valid numeric latitude and longitude.');
-      return;
+  useEffect(() => {
+    if (gps.hasCoords && gps.location) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(gps.location));
+      } catch {
+        // ignore storage errors
+      }
     }
-    const next = {
-      lat: parsedLat,
-      lng: parsedLng,
-      label: label || `${parsedLat.toFixed(4)}, ${parsedLng.toFixed(4)}`,
-    };
-    setCoords(next);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  }, [gps.hasCoords, gps.location]);
+
+  async function detectBrowserLocation() {
+    return gps.captureLocation();
   }
 
-  function clearLocation() {
-    const cleared = { lat: null, lng: null, label: 'Location not set' };
-    setCoords(cleared);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(cleared));
+  function clearRegionFilter() {
+    setRegionFilter({ village: '', district: '', state: '' });
   }
 
-  function detectBrowserLocation() {
-    if (!navigator.geolocation) {
-      toast.error('Browser geolocation is not supported on this device.');
-      return;
-    }
-    setDetecting(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const next = {
-          lat: Number(pos.coords.latitude.toFixed(5)),
-          lng: Number(pos.coords.longitude.toFixed(5)),
-          label: `GPS (${pos.coords.latitude.toFixed(3)}, ${pos.coords.longitude.toFixed(3)})`,
-        };
-        setCoords(next);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-        setDetecting(false);
-        toast.success('Current GPS location updated.');
-      },
-      () => {
-        setDetecting(false);
-        toast.error(
-          'Location permission denied. You can choose a town or enter coordinates manually.'
-        );
-      },
-      { enableHighAccuracy: true, timeout: 8000 }
-    );
-  }
+  const displayLabel = gps.hasCoords
+    ? [
+        gps.location?.village,
+        gps.location?.district,
+        gps.location?.state,
+      ]
+        .filter(Boolean)
+        .join(', ') ||
+      gps.location?.formattedAddress ||
+      'GPS location captured'
+    : [regionFilter.village, regionFilter.district, regionFilter.state]
+        .filter(Boolean)
+        .join(', ');
 
   return (
     <LocationContext.Provider
       value={{
-        coords,
-        hasCoords: hasValidCoords(coords),
+        coords: gps.hasCoords ? { lat: gps.location.lat, lng: gps.location.lng } : null,
+        location: gps.location,
+        hasCoords: gps.hasCoords,
+        gpsStatus: gps.status,
+        reverseGeocodeOk: gps.reverseGeocodeOk,
+        errorCode: gps.errorCode,
+        detecting: gps.isDetecting,
+        displayLabel,
         radius,
         setRadius,
-        detecting,
+        regionFilter,
+        setRegionFilter,
+        clearRegionFilter,
         detectBrowserLocation,
-        setManualLocation,
-        clearLocation,
       }}
     >
       {children}

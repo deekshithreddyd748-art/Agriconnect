@@ -8,7 +8,7 @@ import ServiceMap from '../../components/ServiceMap';
 import { formatDistanceLabel } from '../../utils/distance';
 
 export default function NearbyMapPage() {
-  const { coords, hasCoords, radius } = useLocationContext();
+  const { coords, hasCoords, radius, regionFilter } = useLocationContext();
   const [serviceType, setServiceType] = useState('all');
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -19,13 +19,23 @@ export default function NearbyMapPage() {
       .get('/discovery/nearby', {
         params: {
           serviceType,
+          ...(!hasCoords && regionFilter.district
+            ? { district: regionFilter.district }
+            : {}),
           ...(hasCoords ? { lat: coords.lat, lng: coords.lng, radius } : {}),
         },
       })
       .then((res) => setItems(res.data.data?.all || []))
       .catch(() => setItems([]))
       .finally(() => setLoading(false));
-  }, [serviceType, coords?.lat, coords?.lng, hasCoords, radius]);
+  }, [
+    serviceType,
+    coords?.lat,
+    coords?.lng,
+    hasCoords,
+    radius,
+    regionFilter.district,
+  ]);
 
   const filterTabs = [
     { key: 'all', label: 'All Services' },

@@ -13,8 +13,10 @@ import HowItWorksPage from './pages/public/HowItWorksPage';
 import ServicesPage from './pages/public/ServicesPage';
 import LoginPage from './pages/public/LoginPage';
 import RegisterPage from './pages/public/RegisterPage';
+import LabourDemoPage from './pages/public/LabourDemoPage';
 
 import FarmerDashboard from './pages/farmer/FarmerDashboard';
+import RequestLabourPage from './pages/farmer/RequestLabourPage';
 import MachineryMarketplace from './pages/farmer/MachineryMarketplace';
 import EquipmentDetailsPage from './pages/farmer/EquipmentDetailsPage';
 import LabourDiscoveryPage from './pages/farmer/LabourDiscoveryPage';
@@ -29,6 +31,7 @@ import ProviderListingsPage from './pages/provider/ProviderListingsPage';
 import ListingFormPage from './pages/provider/ListingFormPage';
 import ProviderBookingsPage from './pages/provider/ProviderBookingsPage';
 import AvailabilityManagementPage from './pages/provider/AvailabilityManagementPage';
+import OpenLabourRequestsPage from './pages/provider/OpenLabourRequestsPage';
 
 import BookingDetailsPage from './pages/shared/BookingDetailsPage';
 import ProfileSettingsPage from './pages/shared/ProfileSettingsPage';
@@ -50,6 +53,7 @@ export default function App() {
                 <Route path="/services" element={<ServicesPage />} />
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />
+                <Route path="/labour-demo" element={<LabourDemoPage />} />
 
                 {/* Discovery Routes */}
                 <Route path="/machinery" element={<MachineryMarketplace />} />
@@ -70,6 +74,14 @@ export default function App() {
                   }
                 />
                 <Route
+                  path="/farmer/request-labour"
+                  element={
+                    <ProtectedRoute allowedRoles={['farmer', 'admin']}>
+                      <RequestLabourPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
                   path="/farmer/bookings"
                   element={
                     <ProtectedRoute allowedRoles={['farmer', 'admin']}>
@@ -84,6 +96,14 @@ export default function App() {
                   element={
                     <ProtectedRoute allowedRoles={[...PROVIDER_ROLES, 'admin']}>
                       <ProviderDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/provider/open-requests"
+                  element={
+                    <ProtectedRoute allowedRoles={['labour_provider', 'admin']}>
+                      <OpenLabourRequestsPage />
                     </ProtectedRoute>
                   }
                 />

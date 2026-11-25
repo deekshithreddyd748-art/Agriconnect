@@ -61,55 +61,19 @@ export const PROVIDER_ROLES = [
   'facility_operator',
 ];
 
-export const PRESET_LOCATIONS = [
-  {
-    label: 'Baramati, Pune (Maharashtra)',
-    village: 'Baramati',
-    district: 'Pune',
-    state: 'Maharashtra',
-    lat: 18.1517,
-    lng: 74.5777,
-  },
-  {
-    label: 'Malegaon Bk, Pune (Maharashtra)',
-    village: 'Malegaon Bk',
-    district: 'Pune',
-    state: 'Maharashtra',
-    lat: 18.1742,
-    lng: 74.539,
-  },
-  {
-    label: 'Pandare, Pune (Maharashtra)',
-    village: 'Pandare',
-    district: 'Pune',
-    state: 'Maharashtra',
-    lat: 18.118,
-    lng: 74.544,
-  },
-  {
-    label: 'Nashik Agro Belt (Maharashtra)',
-    village: 'Niphad',
-    district: 'Nashik',
-    state: 'Maharashtra',
-    lat: 20.0736,
-    lng: 74.1045,
-  },
-  {
-    label: 'Karnal Agri Hub (Haryana)',
-    village: 'Karnal',
-    district: 'Karnal',
-    state: 'Haryana',
-    lat: 29.6857,
-    lng: 76.9905,
-  },
-  {
-    label: 'Warangal Rural (Telangana)',
-    village: 'Narsampet',
-    district: 'Warangal',
-    state: 'Telangana',
-    lat: 17.9285,
-    lng: 79.8943,
-  },
+/**
+ * Administrative region options used ONLY as a non-GPS fallback.
+ * Intentionally contains NO latitude or longitude so coordinates are never fabricated.
+ */
+export const REGION_OPTIONS = [
+  { village: 'Baramati', district: 'Pune', state: 'Maharashtra' },
+  { village: 'Malegaon Bk', district: 'Pune', state: 'Maharashtra' },
+  { village: 'Pandare', district: 'Pune', state: 'Maharashtra' },
+  { village: 'Niphad', district: 'Nashik', state: 'Maharashtra' },
+  { village: 'Karnal', district: 'Karnal', state: 'Haryana' },
+  { village: 'Narsampet', district: 'Warangal', state: 'Telangana' },
+  { village: 'Mandya', district: 'Mandya', state: 'Karnataka' },
+  { village: 'Thanjavur', district: 'Thanjavur', state: 'Tamil Nadu' },
 ];
 
 export const STATUS_BADGES = {

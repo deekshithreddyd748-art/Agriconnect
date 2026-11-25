@@ -5,6 +5,8 @@ import { connectDB } from '../config/db.js';
 import User from '../models/User.js';
 import Equipment from '../models/Equipment.js';
 import Labour from '../models/Labour.js';
+import LabourRequest from '../models/LabourRequest.js';
+import LabourApplication from '../models/LabourApplication.js';
 import Facility from '../models/Facility.js';
 import Booking from '../models/Booking.js';
 
@@ -16,6 +18,8 @@ export async function ensureDemoData({ forceReset = false } = {}) {
 
   if (forceReset) {
     await Promise.all([
+      LabourApplication.deleteMany({}),
+      LabourRequest.deleteMany({}),
       Booking.deleteMany({}),
       Equipment.deleteMany({}),
       Labour.deleteMany({}),
@@ -29,12 +33,16 @@ export async function ensureDemoData({ forceReset = false } = {}) {
       name: 'Rajesh Patil',
       email: 'farmer@agriconnect.in',
       phone: '+91 98230 11223',
+      mobileNumber: '9823011223',
+      mobileVerified: true,
       password: 'Demo@123',
       role: 'farmer',
       language: 'Marathi',
       village: 'Baramati',
       district: 'Pune',
       state: 'Maharashtra',
+      primaryCrop: 'Sugarcane & Wheat',
+      farmSize: 6.5,
       location: {
         lat: 18.1517,
         lng: 74.5777,
@@ -45,6 +53,8 @@ export async function ensureDemoData({ forceReset = false } = {}) {
       name: 'Suresh Deshmukh',
       email: 'owner@agriconnect.in',
       phone: '+91 98231 44556',
+      mobileNumber: '9823144556',
+      mobileVerified: true,
       password: 'Demo@123',
       role: 'equipment_owner',
       language: 'Marathi',
@@ -61,6 +71,8 @@ export async function ensureDemoData({ forceReset = false } = {}) {
       name: 'Mahesh Jadhav',
       email: 'owner2@agriconnect.in',
       phone: '+91 97654 22334',
+      mobileNumber: '9765422334',
+      mobileVerified: true,
       password: 'Demo@123',
       role: 'equipment_owner',
       language: 'Hindi',
@@ -77,12 +89,17 @@ export async function ensureDemoData({ forceReset = false } = {}) {
       name: 'Kavita Shinde',
       email: 'labour@agriconnect.in',
       phone: '+91 98901 77889',
+      mobileNumber: '9890177889',
+      mobileVerified: true,
       password: 'Demo@123',
       role: 'labour_provider',
       language: 'Marathi',
       village: 'Pandare',
       district: 'Pune',
       state: 'Maharashtra',
+      skills: ['Harvesting', 'Sowing / Planting', 'Weeding'],
+      experience: '8+ years farm team supervision',
+      availability: true,
       location: {
         lat: 18.118,
         lng: 74.544,
@@ -93,6 +110,8 @@ export async function ensureDemoData({ forceReset = false } = {}) {
       name: 'Vikram Kulkarni',
       email: 'facility@agriconnect.in',
       phone: '+91 94220 55667',
+      mobileNumber: '9422055667',
+      mobileVerified: true,
       password: 'Demo@123',
       role: 'facility_operator',
       language: 'English',
@@ -109,6 +128,8 @@ export async function ensureDemoData({ forceReset = false } = {}) {
       name: 'AgriConnect Admin',
       email: 'admin@agriconnect.in',
       phone: '+91 90000 00001',
+      mobileNumber: '9000000001',
+      mobileVerified: true,
       password: 'Admin@123',
       role: 'admin',
       language: 'English',
@@ -496,6 +517,65 @@ export async function ensureDemoData({ forceReset = false } = {}) {
       providerNote: 'Harvester scheduled for maintenance on that date.',
     },
   ]);
+
+  const seedRequests = await LabourRequest.create([
+    {
+      requestCode: 'LR-2026-1001',
+      farmerId: farmer._id,
+      category: 'Harvesting',
+      workersRequired: 5,
+      workersAccepted: 1,
+      startDate: '2026-12-02',
+      durationDays: 3,
+      dailyWage: 520,
+      estimatedTotal: 7800,
+      location: {
+        village: 'Baramati',
+        district: 'Pune',
+        state: 'Maharashtra',
+        address: 'Baramati Rural Road, Plot 14',
+        lat: 18.1517,
+        lng: 74.5777,
+      },
+      instructions: 'Sugarcane harvesting & clean bundling near main canal gate.',
+      preferredHours: '07:00 AM - 02:00 PM',
+      status: 'Partially Filled',
+    },
+    {
+      requestCode: 'LR-2026-1002',
+      farmerId: farmer._id,
+      category: 'Weeding',
+      workersRequired: 4,
+      workersAccepted: 0,
+      startDate: '2026-12-05',
+      durationDays: 2,
+      dailyWage: 450,
+      estimatedTotal: 3600,
+      location: {
+        village: 'Baramati',
+        district: 'Pune',
+        state: 'Maharashtra',
+        address: 'East Farm Plot, Baramati',
+        lat: 18.1517,
+        lng: 74.5777,
+      },
+      instructions: 'Manual inter-row weeding for onion field.',
+      preferredHours: '06:30 AM - 01:30 PM',
+      status: 'Open',
+    },
+  ]);
+
+  await LabourApplication.create({
+    requestId: seedRequests[0]._id,
+    workerId: labourProvider._id,
+    workerName: labourProvider.name,
+    workerPhone: labourProvider.phone,
+    workerVillage: 'Pandare, Pune',
+    skills: labourProvider.skills,
+    experience: labourProvider.experience,
+    message: 'Available with harvesting tools on Dec 2.',
+    status: 'Accepted',
+  });
 
   console.log('AgriConnect demo data seeded successfully.');
   return { seeded: true };

@@ -10,7 +10,7 @@ import { LABOUR_CATEGORIES } from '../../utils/constants';
 import { formatCurrency, formatDistanceLabel } from '../../utils/distance';
 
 export default function LabourDiscoveryPage() {
-  const { coords, hasCoords, radius } = useLocationContext();
+  const { coords, hasCoords, radius, regionFilter } = useLocationContext();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState('list');
@@ -22,11 +22,12 @@ export default function LabourDiscoveryPage() {
 
   useEffect(() => {
     setLoading(true);
+    const effectiveDistrict = district || (!hasCoords ? regionFilter.district : '');
     api
       .get('/labour', {
         params: {
           category,
-          district,
+          district: effectiveDistrict,
           minWorkers,
           maxPrice,
           search,
@@ -36,7 +37,18 @@ export default function LabourDiscoveryPage() {
       .then((res) => setItems(res.data.data || []))
       .catch(() => setItems([]))
       .finally(() => setLoading(false));
-  }, [category, district, minWorkers, maxPrice, search, coords?.lat, coords?.lng, hasCoords, radius]);
+  }, [
+    category,
+    district,
+    minWorkers,
+    maxPrice,
+    search,
+    coords?.lat,
+    coords?.lng,
+    hasCoords,
+    radius,
+    regionFilter.district,
+  ]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">

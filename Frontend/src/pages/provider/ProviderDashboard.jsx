@@ -8,6 +8,7 @@ import {
   IndianRupee,
   ToggleLeft,
   ArrowRight,
+  Briefcase,
 } from 'lucide-react';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -41,27 +42,35 @@ export default function ProviderDashboard() {
         </div>
 
         <div className="flex flex-wrap gap-2">
+          {user?.role === 'labour_provider' && (
+            <Link
+              to="/provider/open-requests"
+              className="inline-flex items-center gap-1.5 px-4 min-h-[44px] rounded-xl bg-harvest-600 hover:bg-harvest-700 text-white text-sm font-semibold"
+            >
+              <Briefcase className="w-4 h-4" /> Browse Open Farmer Jobs
+            </Link>
+          )}
           <Link
             to="/provider/listings/new"
-            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-forest-700 hover:bg-forest-800 text-white text-sm font-semibold"
+            className="inline-flex items-center gap-1.5 px-4 min-h-[44px] rounded-xl bg-forest-700 hover:bg-forest-800 text-white text-sm font-semibold"
           >
             <PlusCircle className="w-4 h-4" /> Add New Listing
           </Link>
           <Link
             to="/provider/listings"
-            className="px-4 py-2.5 rounded-xl bg-white border border-earth-200 text-slate-800 text-sm font-semibold hover:bg-earth-50"
+            className="px-4 min-h-[44px] inline-flex items-center rounded-xl bg-white border border-earth-200 text-slate-800 text-sm font-semibold hover:bg-earth-50"
           >
             My Listings
           </Link>
           <Link
             to="/provider/requests"
-            className="px-4 py-2.5 rounded-xl bg-white border border-earth-200 text-slate-800 text-sm font-semibold hover:bg-earth-50"
+            className="px-4 min-h-[44px] inline-flex items-center rounded-xl bg-white border border-earth-200 text-slate-800 text-sm font-semibold hover:bg-earth-50"
           >
             Booking Requests
           </Link>
           <Link
             to="/provider/availability"
-            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-forest-50 text-forest-800 text-sm font-semibold hover:bg-forest-100"
+            className="inline-flex items-center gap-1.5 px-4 min-h-[44px] rounded-xl bg-forest-50 text-forest-800 text-sm font-semibold hover:bg-forest-100"
           >
             <ToggleLeft className="w-4 h-4" /> Availability
           </Link>
@@ -148,7 +157,7 @@ export default function ProviderDashboard() {
 
             {(stats?.recentRequests || []).length === 0 ? (
               <p className="text-sm text-slate-500 py-6 text-center">
-                No booking requests yet.
+                No direct booking requests yet.
               </p>
             ) : (
               <div className="space-y-3">

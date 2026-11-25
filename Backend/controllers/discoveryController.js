@@ -1,6 +1,8 @@
 import User from '../models/User.js';
 import Equipment from '../models/Equipment.js';
 import Labour from '../models/Labour.js';
+import LabourRequest from '../models/LabourRequest.js';
+import LabourApplication from '../models/LabourApplication.js';
 import Facility from '../models/Facility.js';
 import Booking from '../models/Booking.js';
 import { AppError, asyncHandler } from '../middleware/errorHandler.js';
@@ -142,7 +144,7 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
   };
 
   if (req.user.role === 'farmer') {
-    const [equipments, labours, facilities, bookings] = await Promise.all([
+    const [equipments, labours, facilities, bookings, labourRequests] = await Promise.all([
       Equipment.find({ availability: true }).lean(),
       Labour.find({ availability: true }).lean(),
       Facility.find({ availability: true }).lean(),
@@ -150,7 +152,13 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
         .populate('providerId', 'name phone')
         .sort({ createdAt: -1 })
         .lean(),
+      LabourRequest.find({ farmerId: req.user._id }).sort({ createdAt: -1 }).lean(),
     ]);
+
+    const pendingAppsCount = await LabourApplication.countDocuments({
+      requestId: { $in: labourRequests.map((r) => r._id) },
+      status: 'Pending',
+    });
 
     const nearbyEquipment = enrichAndFilterByDistance(equipments, userCoords, radius);
     const nearbyLabour = enrichAndFilterByDistance(labours, userCoords, radius);
@@ -172,6 +180,11 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
         totalAvailableFacilities: facilities.length,
         upcomingBookings,
         pendingBookings,
+        labourRequests: labourRequests.slice(0, 4),
+        openLabourRequestsCount: labourRequests.filter((r) =>
+          ['Open', 'Partially Filled'].includes(r.status)
+        ).length,
+        pendingApplicationsCount: pendingAppsCount,
         recentActivity: bookings.slice(0, 6),
       },
     });

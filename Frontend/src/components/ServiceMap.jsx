@@ -3,7 +3,7 @@ import L from 'leaflet';
 import { hasValidCoords } from '../utils/distance';
 
 const TYPE_COLORS = {
-  equipment: '#1B4332',
+  equipment: '#14532D',
   labour: '#D97706',
   facility: '#0284C7',
 };
@@ -33,11 +33,11 @@ export default function ServiceMap({
 
     const initialCenter = hasValidCoords(userCoords)
       ? [Number(userCoords.lat), Number(userCoords.lng)]
-      : [18.1517, 74.5777];
+      : [20.5937, 78.9629];
 
     const map = L.map(containerRef.current, {
       center: initialCenter,
-      zoom: 11,
+      zoom: hasValidCoords(userCoords) ? 11 : 5,
     });
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -69,14 +69,14 @@ export default function ServiceMap({
       L.marker(center, {
         icon: createCircleIcon('#DC2626', 'Me'),
       })
-        .bindPopup('<strong>Your Selected Location</strong>')
+        .bindPopup('<strong>Your GPS Location</strong>')
         .addTo(layer);
 
       if (radiusKm > 0) {
         L.circle(center, {
           radius: radiusKm * 1000,
-          color: '#2D6A4F',
-          fillColor: '#52B788',
+          color: '#22C55E',
+          fillColor: '#22C55E',
           fillOpacity: 0.12,
           weight: 1.5,
         }).addTo(layer);
@@ -100,7 +100,7 @@ export default function ServiceMap({
       const title = item.displayTitle || item.name || item.title || item.category;
       const distanceHtml =
         item.distanceKm !== null && item.distanceKm !== undefined
-          ? `<div style="color:#1B4332;font-weight:600;margin-top:2px;">${item.distanceKm} km away</div>`
+          ? `<div style="color:#14532D;font-weight:600;margin-top:2px;">${item.distanceKm} km away</div>`
           : '';
 
       const popupHtml = `
@@ -109,12 +109,12 @@ export default function ServiceMap({
           <div style="font-size:14px;font-weight:700;color:#0f172a;margin:2px 0;">${title}</div>
           <div style="font-size:12px;color:#475569;">${item.location?.village || ''} ${item.location?.district || ''}</div>
           ${distanceHtml}
-          <a href="${detailPath}" style="display:inline-block;margin-top:8px;padding:4px 10px;background:#1B4332;color:#fff;border-radius:6px;text-decoration:none;font-size:12px;font-weight:600;">View Details</a>
+          <a href="${detailPath}" style="display:inline-block;margin-top:8px;padding:4px 10px;background:#14532D;color:#fff;border-radius:6px;text-decoration:none;font-size:12px;font-weight:600;">View Details</a>
         </div>
       `;
 
       L.marker(point, {
-        icon: createCircleIcon(TYPE_COLORS[type] || '#1B4332', badge),
+        icon: createCircleIcon(TYPE_COLORS[type] || '#14532D', badge),
       })
         .bindPopup(popupHtml)
         .addTo(layer);
@@ -135,43 +135,39 @@ export default function ServiceMap({
 }
 
 /**
- * Interactive click-to-pick map for setting coordinates without typing lat/lng.
+ * Strictly read-only map preview displaying a GPS-captured location.
+ * Does NOT allow clicking or dragging markers to override GPS coordinates.
  */
-export function LocationPickerMap({ lat, lng, onSelect, height = '240px' }) {
+export function ReadOnlyLocationMap({ lat, lng, label = 'GPS Location', height = '200px' }) {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const markerRef = useRef(null);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
-    const valid = hasValidCoords({ lat, lng });
-    const center = valid ? [Number(lat), Number(lng)] : [18.1517, 74.5777];
+    if (!hasValidCoords({ lat, lng })) return;
 
-    const map = L.map(containerRef.current, { center, zoom: valid ? 12 : 7 });
+    const pos = [Number(lat), Number(lng)];
+    const map = L.map(containerRef.current, {
+      center: pos,
+      zoom: 13,
+      dragging: true,
+      scrollWheelZoom: false,
+    });
+
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap',
     }).addTo(map);
 
-    if (valid) {
-      markerRef.current = L.marker(center, {
-        icon: createCircleIcon('#1B4332', '★'),
-      }).addTo(map);
-    }
-
-    map.on('click', (e) => {
-      const pickedLat = Number(e.latlng.lat.toFixed(5));
-      const pickedLng = Number(e.latlng.lng.toFixed(5));
-      if (markerRef.current) {
-        markerRef.current.setLatLng([pickedLat, pickedLng]);
-      } else {
-        markerRef.current = L.marker([pickedLat, pickedLng], {
-          icon: createCircleIcon('#1B4332', '★'),
-        }).addTo(map);
-      }
-      onSelect(pickedLat, pickedLng);
-    });
+    markerRef.current = L.marker(pos, {
+      icon: createCircleIcon('#14532D', 'GPS'),
+      draggable: false,
+    })
+      .bindPopup(`<strong>${label || 'GPS Location'}</strong>`)
+      .addTo(map);
 
     mapRef.current = map;
+
     return () => {
       map.remove();
       mapRef.current = null;
@@ -180,19 +176,16 @@ export function LocationPickerMap({ lat, lng, onSelect, height = '240px' }) {
   }, []);
 
   useEffect(() => {
-    if (!mapRef.current) return;
-    if (hasValidCoords({ lat, lng })) {
-      const pos = [Number(lat), Number(lng)];
-      if (markerRef.current) {
-        markerRef.current.setLatLng(pos);
-      } else {
-        markerRef.current = L.marker(pos, {
-          icon: createCircleIcon('#1B4332', '★'),
-        }).addTo(mapRef.current);
-      }
-      mapRef.current.setView(pos, 12);
+    if (!mapRef.current || !hasValidCoords({ lat, lng })) return;
+    const pos = [Number(lat), Number(lng)];
+    if (markerRef.current) {
+      markerRef.current.setLatLng(pos);
+      markerRef.current.setPopupContent(`<strong>${label || 'GPS Location'}</strong>`);
     }
-  }, [lat, lng]);
+    mapRef.current.setView(pos, 13);
+  }, [lat, lng, label]);
+
+  if (!hasValidCoords({ lat, lng })) return null;
 
   return (
     <div

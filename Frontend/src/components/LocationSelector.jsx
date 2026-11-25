@@ -1,68 +1,89 @@
-import { useState } from 'react';
-import { Crosshair, MapPin, SlidersHorizontal, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import {
+  MapPin,
+  Loader2,
+  RefreshCw,
+  CheckCircle2,
+  AlertTriangle,
+  ShieldAlert,
+  WifiOff,
+} from 'lucide-react';
 import { useLocationContext } from '../context/LocationContext';
-import { PRESET_LOCATIONS, RADIUS_OPTIONS } from '../utils/constants';
+import { RADIUS_OPTIONS, REGION_OPTIONS } from '../utils/constants';
 
 export default function LocationSelector({ showRadius = true }) {
+  const { t } = useTranslation();
   const {
-    coords,
     hasCoords,
+    gpsStatus,
+    reverseGeocodeOk,
+    detecting,
+    displayLabel,
     radius,
     setRadius,
-    detecting,
+    regionFilter,
+    setRegionFilter,
+    clearRegionFilter,
     detectBrowserLocation,
-    setManualLocation,
-    clearLocation,
   } = useLocationContext();
 
-  const [manualOpen, setManualOpen] = useState(false);
-  const [latInput, setLatInput] = useState(coords?.lat ?? '');
-  const [lngInput, setLngInput] = useState(coords?.lng ?? '');
-  const [labelInput, setLabelInput] = useState(coords?.label ?? '');
-
-  function handlePresetChange(e) {
-    const idx = e.target.value;
-    if (idx === '') return;
-    if (idx === 'clear') {
-      clearLocation();
+  function handleRegionFallback(e) {
+    const val = e.target.value;
+    if (val === '') {
+      clearRegionFilter();
       return;
     }
-    const preset = PRESET_LOCATIONS[Number(idx)];
-    if (preset) {
-      setManualLocation({
-        lat: preset.lat,
-        lng: preset.lng,
-        label: preset.label,
-      });
+    const region = REGION_OPTIONS[Number(val)];
+    if (region) {
+      setRegionFilter(region);
     }
-  }
-
-  function handleManualSubmit(e) {
-    e.preventDefault();
-    setManualLocation({
-      lat: latInput,
-      lng: lngInput,
-      label: labelInput || 'Custom Farm Location',
-    });
-    setManualOpen(false);
   }
 
   return (
-    <div className="bg-white border border-earth-200 rounded-2xl p-4 shadow-sm">
+    <div className="bg-white border border-earth-200 rounded-2xl p-4 shadow-sm space-y-3">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         <div className="flex items-start sm:items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-forest-50 text-forest-700 flex items-center justify-center shrink-0">
-            <MapPin className="w-5 h-5" />
+          <div className="w-11 h-11 rounded-xl bg-forest-50 text-forest-700 flex items-center justify-center shrink-0">
+            {detecting ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <MapPin className="w-5 h-5" />
+            )}
           </div>
           <div>
             <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Hyperlocal Discovery Center
+              GPS Hyperlocal Discovery
             </div>
-            <div className="text-sm font-semibold text-slate-800">
-              {hasCoords
-                ? `${coords.label} (${Number(coords.lat).toFixed(3)}, ${Number(coords.lng).toFixed(3)})`
-                : 'No coordinates selected — distances unavailable'}
-            </div>
+            {detecting ? (
+              <div className="text-sm font-semibold text-forest-800">
+                {t('gps.detecting')}
+              </div>
+            ) : hasCoords ? (
+              <div className="text-sm font-bold text-slate-900 flex items-center gap-1.5 flex-wrap">
+                <CheckCircle2 className="w-4 h-4 text-fresh-600 shrink-0" />
+                <span>
+                  {reverseGeocodeOk
+                    ? displayLabel
+                    : t('gps.gpsOnlyCaptured')}
+                </span>
+                {!reverseGeocodeOk && (
+                  <span className="text-xs font-normal text-slate-500">
+                    ({t('gps.addressUnavailable')})
+                  </span>
+                )}
+              </div>
+            ) : regionFilter.district ? (
+              <div className="text-sm font-semibold text-slate-800">
+                {regionFilter.village}, {regionFilter.district} ({regionFilter.state}){' '}
+                <span className="text-xs font-normal text-slate-500">
+                  — Approximate region filter
+                </span>
+              </div>
+            ) : (
+              <div className="text-sm font-medium text-slate-600">
+                {t('gps.notSet')}
+              </div>
+            )}
           </div>
         </div>
 
@@ -71,124 +92,111 @@ export default function LocationSelector({ showRadius = true }) {
             type="button"
             onClick={detectBrowserLocation}
             disabled={detecting}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-forest-700 hover:bg-forest-800 text-white text-xs sm:text-sm font-semibold transition-colors disabled:opacity-60"
+            className="min-h-[44px] inline-flex items-center gap-2 px-4 rounded-xl bg-forest-700 hover:bg-forest-800 text-white text-xs sm:text-sm font-bold transition-colors disabled:opacity-60"
           >
-            <Crosshair className="w-4 h-4" />
-            {detecting ? 'Detecting...' : 'Use My GPS'}
+            {detecting ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                {t('gps.detectingShort')}
+              </>
+            ) : hasCoords ? (
+              <>
+                <RefreshCw className="w-4 h-4" />
+                {t('gps.refreshBtn')}
+              </>
+            ) : (
+              <>
+                <MapPin className="w-4 h-4" />
+                {t('gps.useCurrentBtn')}
+              </>
+            )}
           </button>
 
-          <select
-            aria-label="Select agricultural region preset"
-            onChange={handlePresetChange}
-            defaultValue=""
-            className="px-3 py-2 rounded-xl border border-earth-200 bg-earth-50 text-xs sm:text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-forest-500"
-          >
-            <option value="" disabled>
-              Choose Town / Village...
-            </option>
-            {PRESET_LOCATIONS.map((loc, idx) => (
-              <option key={loc.label} value={idx}>
-                {loc.label}
-              </option>
-            ))}
-            <option value="clear">Clear Coordinates (Show All)</option>
-          </select>
-
-          <button
-            type="button"
-            onClick={() => {
-              setLatInput(coords?.lat ?? '');
-              setLngInput(coords?.lng ?? '');
-              setLabelInput(coords?.label ?? '');
-              setManualOpen((v) => !v);
-            }}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-earth-200 hover:bg-earth-50 text-xs sm:text-sm font-medium text-slate-700"
-          >
-            <SlidersHorizontal className="w-3.5 h-3.5" />
-            Manual Coordinates
-          </button>
+          {!hasCoords && (
+            <select
+              aria-label={t('gps.regionFallbackSelect')}
+              onChange={handleRegionFallback}
+              defaultValue=""
+              className="min-h-[44px] px-3 rounded-xl border border-earth-200 bg-earth-50 text-xs sm:text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-forest-500"
+            >
+              <option value="">{t('gps.regionFallbackSelect')}</option>
+              {REGION_OPTIONS.map((reg, idx) => (
+                <option key={`${reg.village}-${reg.district}`} value={idx}>
+                  {reg.village}, {reg.district} ({reg.state})
+                </option>
+              ))}
+            </select>
+          )}
 
           {showRadius && (
-            <div className="flex items-center gap-1.5 bg-earth-50 border border-earth-200 rounded-xl px-2.5 py-1.5">
-              <span className="text-xs font-medium text-slate-600">Radius:</span>
+            <div className="min-h-[44px] flex items-center gap-1.5 bg-earth-50 border border-earth-200 rounded-xl px-3">
+              <span className="text-xs font-medium text-slate-600">
+                {t('gps.radiusLabel')}
+              </span>
               <select
                 value={radius}
                 onChange={(e) => setRadius(Number(e.target.value))}
-                className="bg-transparent text-xs sm:text-sm font-semibold text-forest-800 focus:outline-none"
+                disabled={!hasCoords}
+                className="bg-transparent text-xs sm:text-sm font-semibold text-forest-800 focus:outline-none disabled:opacity-50"
               >
                 {RADIUS_OPTIONS.map((km) => (
                   <option key={km} value={km}>
-                    Within {km} km
+                    {t('gps.withinKm', { km })}
                   </option>
                 ))}
-                <option value={0}>Any distance</option>
+                <option value={0}>{t('gps.anyDistance')}</option>
               </select>
             </div>
           )}
         </div>
       </div>
 
-      {manualOpen && (
-        <form
-          onSubmit={handleManualSubmit}
-          className="mt-4 pt-4 border-t border-earth-200 grid grid-cols-1 sm:grid-cols-4 gap-3 items-end"
-        >
-          <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">
-              Village / Location Label
-            </label>
-            <input
-              type="text"
-              value={labelInput}
-              onChange={(e) => setLabelInput(e.target.value)}
-              placeholder="e.g., Baramati Farm"
-              className="w-full px-3 py-2 rounded-xl border border-earth-200 text-sm"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">
-              Latitude
-            </label>
-            <input
-              type="number"
-              step="any"
-              required
-              value={latInput}
-              onChange={(e) => setLatInput(e.target.value)}
-              placeholder="18.1517"
-              className="w-full px-3 py-2 rounded-xl border border-earth-200 text-sm"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">
-              Longitude
-            </label>
-            <input
-              type="number"
-              step="any"
-              required
-              value={lngInput}
-              onChange={(e) => setLngInput(e.target.value)}
-              placeholder="74.5777"
-              className="w-full px-3 py-2 rounded-xl border border-earth-200 text-sm"
-            />
-          </div>
-          <div className="flex gap-2">
-            <button
-              type="submit"
-              className="flex-1 py-2 px-3 rounded-xl bg-forest-700 text-white text-sm font-semibold hover:bg-forest-800"
-            >
-              Apply
-            </button>
-            <button
-              type="button"
-              onClick={() => setManualOpen(false)}
-              className="p-2 rounded-xl border border-earth-200 text-slate-600 hover:bg-earth-50"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        </form>
+      {gpsStatus === 'denied' && (
+        <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-center justify-between gap-2">
+          <span className="inline-flex items-center gap-1.5 font-medium">
+            <ShieldAlert className="w-4 h-4 shrink-0" />
+            {t('gps.permissionDenied')}
+          </span>
+          <button
+            type="button"
+            onClick={detectBrowserLocation}
+            className="px-3 py-1.5 rounded-lg bg-rose-700 text-white font-bold shrink-0"
+          >
+            {t('gps.retryBtn')}
+          </button>
+        </div>
+      )}
+
+      {gpsStatus === 'unavailable' && (
+        <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-center justify-between gap-2">
+          <span className="inline-flex items-center gap-1.5 font-medium">
+            <WifiOff className="w-4 h-4 shrink-0" />
+            {t('gps.unavailable')}
+          </span>
+          <button
+            type="button"
+            onClick={detectBrowserLocation}
+            className="px-3 py-1.5 rounded-lg bg-amber-800 text-white font-bold shrink-0"
+          >
+            {t('gps.retryBtn')}
+          </button>
+        </div>
+      )}
+
+      {gpsStatus === 'timeout' && (
+        <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-center justify-between gap-2">
+          <span className="inline-flex items-center gap-1.5 font-medium">
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+            {t('gps.timeout')}
+          </span>
+          <button
+            type="button"
+            onClick={detectBrowserLocation}
+            className="px-3 py-1.5 rounded-lg bg-amber-800 text-white font-bold shrink-0"
+          >
+            {t('gps.retryBtn')}
+          </button>
+        </div>
       )}
     </div>
   );

@@ -14,7 +14,7 @@ import {
 } from '../../utils/distance';
 
 export default function FacilityDiscoveryPage() {
-  const { coords, hasCoords, radius } = useLocationContext();
+  const { coords, hasCoords, radius, regionFilter } = useLocationContext();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState('list');
@@ -25,11 +25,12 @@ export default function FacilityDiscoveryPage() {
 
   useEffect(() => {
     setLoading(true);
+    const effectiveDistrict = district || (!hasCoords ? regionFilter.district : '');
     api
       .get('/facilities', {
         params: {
           category,
-          district,
+          district: effectiveDistrict,
           minCapacity,
           search,
           ...(hasCoords ? { lat: coords.lat, lng: coords.lng, radius } : {}),
@@ -38,7 +39,17 @@ export default function FacilityDiscoveryPage() {
       .then((res) => setItems(res.data.data || []))
       .catch(() => setItems([]))
       .finally(() => setLoading(false));
-  }, [category, district, minCapacity, search, coords?.lat, coords?.lng, hasCoords, radius]);
+  }, [
+    category,
+    district,
+    minCapacity,
+    search,
+    coords?.lat,
+    coords?.lng,
+    hasCoords,
+    radius,
+    regionFilter.district,
+  ]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">

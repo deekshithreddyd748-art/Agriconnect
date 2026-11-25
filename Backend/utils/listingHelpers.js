@@ -16,33 +16,57 @@ export function parseMaybeJson(value, fallback) {
 }
 
 /**
- * Normalize location payloads from request bodies, falling back to user profile
- * address metadata (while keeping coordinates null unless explicitly valid).
+ * Normalize location payloads from request bodies (supporting { lat, lng } and
+ * GeoJSON { coordinates: [lng, lat] }), falling back to user profile address
+ * metadata and rejecting out-of-range coordinates with HTTP 400.
  */
 export function normalizeLocation(rawLocation, fallbackUser = {}) {
   const parsed = parseMaybeJson(rawLocation, {}) || {};
-  const latNum =
-    parsed.lat !== undefined && parsed.lat !== null && parsed.lat !== ''
-      ? Number(parsed.lat)
-      : null;
-  const lngNum =
-    parsed.lng !== undefined && parsed.lng !== null && parsed.lng !== ''
-      ? Number(parsed.lng)
-      : null;
 
-  const validCoords =
-    latNum !== null &&
-    lngNum !== null &&
-    Number.isFinite(latNum) &&
-    Number.isFinite(lngNum) &&
-    latNum >= -90 &&
-    latNum <= 90 &&
-    lngNum >= -180 &&
-    lngNum <= 180;
+  let rawLat = parsed.lat;
+  let rawLng = parsed.lng;
+
+  if (Array.isArray(parsed.coordinates) && parsed.coordinates.length >= 2) {
+    rawLng = parsed.coordinates[0];
+    rawLat = parsed.coordinates[1];
+  }
+
+  const hasLat = rawLat !== undefined && rawLat !== null && rawLat !== '';
+  const hasLng = rawLng !== undefined && rawLng !== null && rawLng !== '';
+
+  if (hasLat !== hasLng) {
+    throw new AppError(
+      'Invalid GPS coordinates: both latitude and longitude are required.',
+      400
+    );
+  }
+
+  let lat = null;
+  let lng = null;
+
+  if (hasLat && hasLng) {
+    const latNum = Number(rawLat);
+    const lngNum = Number(rawLng);
+    if (
+      !Number.isFinite(latNum) ||
+      !Number.isFinite(lngNum) ||
+      latNum < -90 ||
+      latNum > 90 ||
+      lngNum < -180 ||
+      lngNum > 180
+    ) {
+      throw new AppError(
+        'Invalid GPS coordinates: latitude must be between -90 and 90, and longitude between -180 and 180.',
+        400
+      );
+    }
+    lat = latNum;
+    lng = lngNum;
+  }
 
   return {
-    lat: validCoords ? latNum : null,
-    lng: validCoords ? lngNum : null,
+    lat,
+    lng,
     address: parsed.address ?? fallbackUser.location?.address ?? '',
     village: parsed.village ?? fallbackUser.village ?? '',
     district: parsed.district ?? fallbackUser.district ?? '',

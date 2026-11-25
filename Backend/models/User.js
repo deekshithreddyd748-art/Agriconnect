@@ -28,19 +28,33 @@ const userSchema = new mongoose.Schema(
     },
     email: {
       type: String,
-      required: [true, 'Email is required'],
       unique: true,
+      sparse: true,
       lowercase: true,
       trim: true,
+      default: undefined,
     },
     phone: {
       type: String,
       required: [true, 'Mobile number is required'],
       trim: true,
     },
+    mobileNumber: {
+      type: String,
+      unique: true,
+      sparse: true,
+      trim: true,
+      default: undefined,
+    },
+    mobileVerified: {
+      type: Boolean,
+      default: false,
+    },
     password: {
       type: String,
-      required: [true, 'Password is required'],
+      required: function passwordRequired() {
+        return !this.mobileVerified;
+      },
       minlength: 6,
       select: false,
     },
@@ -69,6 +83,29 @@ const userSchema = new mongoose.Schema(
       trim: true,
       default: '',
     },
+    primaryCrop: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    farmSize: {
+      type: Number,
+      min: 0,
+      default: null,
+    },
+    skills: {
+      type: [String],
+      default: [],
+    },
+    experience: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    availability: {
+      type: Boolean,
+      default: true,
+    },
     location: {
       type: locationSchema,
       default: () => ({ lat: null, lng: null, address: '' }),
@@ -82,13 +119,14 @@ const userSchema = new mongoose.Schema(
 );
 
 userSchema.pre('save', async function hashPassword(next) {
-  if (!this.isModified('password')) return next();
+  if (!this.password || !this.isModified('password')) return next();
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
   next();
 });
 
 userSchema.methods.matchPassword = async function matchPassword(enteredPassword) {
+  if (!this.password) return false;
   return bcrypt.compare(enteredPassword, this.password);
 };
 
