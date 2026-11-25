@@ -1,5 +1,25 @@
-venv/
+# Dependencies
 node_modules/
+venv/
+.venv/
+
+# Build outputs
 dist/
 build/
-.env/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Logs and caches
+*.log
+npm-debug.log*
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db
+
+# Uploaded media (keep folder via .gitkeep)
+Backend/uploads/*
+!Backend/uploads/.gitkeep

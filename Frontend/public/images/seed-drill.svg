@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 380" fill="none">
+  <rect width="600" height="380" fill="#F0F7F4"/>
+  <path d="M0 295 Q190 272 410 295 T600 285 L600 380 L0 380 Z" fill="#B5DBC9"/>
+  <polygon points="165,130 435,130 405,210 195,210" fill="#1B4332"/>
+  <rect x="175" y="210" width="250" height="22" rx="6" fill="#D97706"/>
+  <circle cx="170" cy="248" r="28" fill="#0F172A"/>
+  <circle cx="430" cy="248" r="28" fill="#0F172A"/>
+  <path d="M225 232 V275 M275 232 V275 M325 232 V275 M375 232 V275" stroke="#334155" stroke-width="8" stroke-linecap="round"/>
+  <text x="32" y="48" fill="#1B4332" font-family="sans-serif" font-size="22" font-weight="700">SEED DRILL</text>
+</svg>
