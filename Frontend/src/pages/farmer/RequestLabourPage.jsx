@@ -9,6 +9,8 @@ import {
   SprayCan,
   Tractor,
   Droplets,
+  Shovel,
+  PackagePlus,
   Users,
   Wrench,
   Search,
@@ -20,24 +22,33 @@ import {
   XCircle,
   ArrowLeft,
   Phone,
+  Play,
+  Flag,
+  Edit3,
+  Ruler,
 } from 'lucide-react';
 import api, { getErrorMessage } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useLocationContext } from '../../context/LocationContext';
 import { BookingStatusBadge } from '../../components/StatusBadge';
 import CurrentLocationPicker from '../../components/location/CurrentLocationPicker';
-import { formatCurrency } from '../../utils/distance';
+import { formatCurrency, formatDate } from '../../utils/distance';
 
 const LABOUR_CATEGORIES_META = [
   { id: 'Sowing / Planting', icon: Sprout },
-  { id: 'Harvesting', icon: Wheat },
+  { id: 'Transplanting', icon: Sprout },
   { id: 'Weeding', icon: Scissors },
+  { id: 'Harvesting', icon: Wheat },
   { id: 'Pesticide Spraying', icon: SprayCan },
   { id: 'Tractor / Machinery Operator', icon: Tractor },
   { id: 'Irrigation Work', icon: Droplets },
+  { id: 'Land Preparation', icon: Shovel },
+  { id: 'Fertilizer Application', icon: PackagePlus },
   { id: 'General Farm Help', icon: Users },
-  { id: 'Other', icon: Wrench },
+  { id: 'Other Agricultural Work', icon: Wrench },
 ];
+
+const EDITABLE_STATUSES = ['Open', 'Pending', 'Applications Received'];
 
 function getTodayDateStr() {
   const d = new Date();
@@ -48,9 +59,10 @@ function getTodayDateStr() {
 
 export default function RequestLabourPage() {
   const { user } = useAuth();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { coords, hasCoords, location: contextLocation } = useLocationContext();
 
+  const [editingRequestId, setEditingRequestId] = useState(null);
   const [category, setCategory] = useState('Harvesting');
   const [catOpen, setCatOpen] = useState(false);
   const [catSearch, setCatSearch] = useState('');
@@ -58,7 +70,10 @@ export default function RequestLabourPage() {
   const [workersRequired, setWorkersRequired] = useState(5);
   const [startDate, setStartDate] = useState(getTodayDateStr());
   const [durationDays, setDurationDays] = useState(2);
-  const [dailyWage, setDailyWage] = useState(500);
+  const [dailyWage, setDailyWage] = useState('500');
+  const [budget, setBudget] = useState('');
+  const [farmSize, setFarmSize] = useState(user?.farmSize ? String(user.farmSize) : '');
+  const [farmSizeUnit, setFarmSizeUnit] = useState(user?.farmSizeUnit || 'acres');
   const [village, setVillage] = useState(user?.village || contextLocation?.village || '');
   const [district, setDistrict] = useState(user?.district || contextLocation?.district || '');
   const [requestGpsCoords, setRequestGpsCoords] = useState(
@@ -75,6 +90,7 @@ export default function RequestLabourPage() {
   const [createdNotice, setCreatedNotice] = useState(null);
 
   const [requests, setRequests] = useState([]);
+  const [confirmedBookings, setConfirmedBookings] = useState([]);
   const [loadingList, setLoadingList] = useState(true);
 
   const filteredCategories = useMemo(() => {
@@ -92,16 +108,28 @@ export default function RequestLabourPage() {
   const SelectedCatIcon = selectedCatMeta.icon;
 
   const parsedWorkers = Math.max(0, Number(workersRequired) || 0);
-  const parsedDays = Math.max(0, Number(durationDays) || 0);
+  const parsedDays = Math.max(1, Number(durationDays) || 1);
   const parsedWage = Math.max(0, Number(dailyWage) || 0);
-  const estimatedTotal = Math.round(parsedWorkers * parsedDays * parsedWage * 100) / 100;
+  const parsedBudget = Math.max(0, Number(budget) || 0);
+  const estimatedTotal =
+    parsedWage > 0
+      ? Math.round(parsedWorkers * parsedDays * parsedWage * 100) / 100
+      : Math.round(parsedBudget * 100) / 100;
 
   function fetchMyRequests() {
     setLoadingList(true);
-    api
-      .get('/labour-requests', { params: { mine: 'true' } })
-      .then((res) => setRequests(res.data.data || []))
-      .catch(() => setRequests([]))
+    Promise.all([
+      api.get('/farmer/labour-requests'),
+      api.get('/labour-requests/farmer/bookings'),
+    ])
+      .then(([reqRes, bookingsRes]) => {
+        setRequests(reqRes.data.data || []);
+        setConfirmedBookings(bookingsRes.data.data || []);
+      })
+      .catch(() => {
+        setRequests([]);
+        setConfirmedBookings([]);
+      })
       .finally(() => setLoadingList(false));
   }
 
@@ -120,6 +148,32 @@ export default function RequestLabourPage() {
     setDistrict(region.district);
   }
 
+  function startEditRequest(req) {
+    setEditingRequestId(req._id);
+    setCategory(req.category || 'Harvesting');
+    setWorkersRequired(req.workersRequired || 1);
+    setStartDate(req.startDate || getTodayDateStr());
+    setDurationDays(req.durationDays || 1);
+    setDailyWage(req.dailyWage ? String(req.dailyWage) : '');
+    setBudget(req.budget !== null && req.budget !== undefined ? String(req.budget) : '');
+    setFarmSize(req.farmSize !== null && req.farmSize !== undefined ? String(req.farmSize) : '');
+    setFarmSizeUnit(req.farmSizeUnit || 'acres');
+    setVillage(req.location?.village || '');
+    setDistrict(req.location?.district || '');
+    setInstructions(req.instructions || '');
+    setPreferredHours(req.preferredHours || '');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function resetFormToCreate() {
+    setEditingRequestId(null);
+    setInstructions('');
+    setBudget('');
+    setWorkersRequired(5);
+    setDailyWage('500');
+    setStartDate(getTodayDateStr());
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     if (!category) return toast.error(t('labourRequest.validation.category'));
@@ -132,41 +186,51 @@ export default function RequestLabourPage() {
     if (Number(durationDays) <= 0) {
       return toast.error(t('labourRequest.validation.duration'));
     }
-    if (Number(dailyWage) <= 0) {
+    if (dailyWage !== '' && Number(dailyWage) < 0) {
       return toast.error(t('labourRequest.validation.wage'));
     }
     if (!village.trim()) {
       return toast.error(t('labourRequest.validation.village'));
     }
 
-    setSubmitting(true);
-    try {
-      const res = await api.post('/labour-requests', {
-        category,
-        workersRequired: Number(workersRequired),
-        startDate,
-        durationDays: Number(durationDays),
-        dailyWage: Number(dailyWage),
+    const payload = {
+      category,
+      workersRequired: Number(workersRequired),
+      startDate,
+      durationDays: Number(durationDays),
+      dailyWage: dailyWage === '' ? 0 : Number(dailyWage),
+      budget: budget === '' ? null : Number(budget),
+      farmSize: farmSize === '' ? null : Number(farmSize),
+      farmSizeUnit,
+      village: village.trim(),
+      district: district.trim(),
+      state: user?.state || '',
+      location: {
         village: village.trim(),
         district: district.trim(),
         state: user?.state || '',
-        location: {
-          village: village.trim(),
-          district: district.trim(),
-          state: user?.state || '',
-          lat: requestGpsCoords?.lat ?? null,
-          lng: requestGpsCoords?.lng ?? null,
-        },
-        instructions: instructions.trim(),
-        preferredHours: preferredHours.trim(),
-      });
+        lat: requestGpsCoords?.lat ?? null,
+        lng: requestGpsCoords?.lng ?? null,
+      },
+      instructions: instructions.trim(),
+      preferredHours: preferredHours.trim(),
+    };
 
-      setCreatedNotice(res.data.data);
-      toast.success(t('labourRequest.successTitle'));
-      setInstructions('');
+    setSubmitting(true);
+    try {
+      if (editingRequestId) {
+        await api.put(`/labour-requests/${editingRequestId}`, payload);
+        toast.success(t('labourRequest.updatedMsg'));
+        resetFormToCreate();
+      } else {
+        const res = await api.post('/labour-requests', payload);
+        setCreatedNotice(res.data.data);
+        toast.success(t('labourRequest.successTitle'));
+        setInstructions('');
+      }
       fetchMyRequests();
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Could not post labour request.'));
+      toast.error(getErrorMessage(err, t('labourRequest.postFailed')));
     } finally {
       setSubmitting(false);
     }
@@ -176,22 +240,38 @@ export default function RequestLabourPage() {
     if (!window.confirm(t('labourRequest.confirmCancel'))) return;
     try {
       await api.patch(`/labour-requests/${id}/cancel`);
-      toast.success('Request cancelled.');
+      toast.success(t('labourRequest.cancelledMsg'));
+      if (editingRequestId === id) resetFormToCreate();
       fetchMyRequests();
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Could not cancel request.'));
+      toast.error(getErrorMessage(err, t('labourRequest.cancelFailed')));
     }
   }
 
-  async function handleReviewApplication(requestId, appId, status) {
+  async function handleReviewApplication(appId, status) {
     try {
-      await api.patch(`/labour-requests/${requestId}/applications/${appId}`, {
-        status,
-      });
-      toast.success(`Worker ${status.toLowerCase()}.`);
+      const action = status === 'Accepted' ? 'accept' : 'reject';
+      await api.patch(`/labour-applications/${appId}/${action}`);
+      toast.success(t('labourRequest.bookingUpdatedMsg', { status: t(`statuses.${status}`, status) }));
       fetchMyRequests();
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to update application.'));
+      toast.error(getErrorMessage(err, t('common.errorGeneric')));
+    }
+  }
+
+  async function handleUpdateBookingStatus(bookingId, bookingStatus) {
+    try {
+      await api.patch(`/labour-requests/bookings/${bookingId}/status`, {
+        bookingStatus,
+      });
+      toast.success(
+        t('labourRequest.bookingUpdatedMsg', {
+          status: t(`statuses.${bookingStatus}`, bookingStatus),
+        })
+      );
+      fetchMyRequests();
+    } catch (err) {
+      toast.error(getErrorMessage(err, t('common.errorGeneric')));
     }
   }
 
@@ -204,7 +284,7 @@ export default function RequestLabourPage() {
         <ArrowLeft className="w-4 h-4" /> {t('nav.dashboard')}
       </Link>
 
-      {createdNotice && (
+      {createdNotice && !editingRequestId && (
         <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 flex items-start gap-3">
           <CheckCircle2 className="w-6 h-6 text-emerald-700 shrink-0 mt-0.5" />
           <div>
@@ -217,17 +297,30 @@ export default function RequestLabourPage() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Request Form */}
+        {/* Create / Edit Request Form */}
         <div className="lg:col-span-7 bg-white rounded-3xl border border-earth-200 p-6 sm:p-8 shadow-sm space-y-5">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-forest-900">
-              {t('labourRequest.title')}
-            </h1>
-            <p className="text-sm text-slate-600 mt-1">{t('labourRequest.subtitle')}</p>
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-forest-900">
+                {editingRequestId
+                  ? t('labourRequest.editRequestBtn')
+                  : t('labourRequest.title')}
+              </h1>
+              <p className="text-sm text-slate-600 mt-1">{t('labourRequest.subtitle')}</p>
+            </div>
+            {editingRequestId && (
+              <button
+                type="button"
+                onClick={resetFormToCreate}
+                className="px-3 min-h-[38px] rounded-xl border border-earth-200 text-xs font-bold text-slate-600 hover:bg-earth-50"
+              >
+                {t('common.cancel')}
+              </button>
+            )}
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Searchable Labour Category Dropdown */}
+            {/* Searchable Work Type Dropdown */}
             <div className="relative">
               <label className="block text-sm font-bold text-slate-800 mb-1.5">
                 {t('labourRequest.categoryLabel')} *
@@ -257,7 +350,7 @@ export default function RequestLabourPage() {
                       className="w-full pl-9 pr-3 py-2 rounded-xl border border-earth-200 text-sm"
                     />
                   </div>
-                  <div className="max-h-60 overflow-y-auto space-y-1">
+                  <div className="max-h-64 overflow-y-auto space-y-1">
                     {filteredCategories.map((cat) => {
                       const Icon = cat.icon;
                       return (
@@ -330,21 +423,61 @@ export default function RequestLabourPage() {
               </div>
               <div>
                 <label className="block text-sm font-bold text-slate-800 mb-1.5">
-                  {t('labourRequest.wageLabel')} *
+                  {t('labourRequest.wageLabel')}
                 </label>
                 <input
                   type="number"
-                  min="1"
-                  required
+                  min="0"
                   value={dailyWage}
                   onChange={(e) => setDailyWage(e.target.value)}
                   className="w-full min-h-[48px] px-4 rounded-xl border-2 border-earth-200 text-base font-semibold"
                 />
               </div>
+
+              <div>
+                <label className="block text-sm font-bold text-slate-800 mb-1.5">
+                  {t('labourRequest.budgetLabel')}
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={budget}
+                  onChange={(e) => setBudget(e.target.value)}
+                  placeholder="0"
+                  className="w-full min-h-[48px] px-4 rounded-xl border-2 border-earth-200 text-base"
+                />
+              </div>
+
+              <div>
+                <label className="flex items-center gap-1.5 text-sm font-bold text-slate-800 mb-1.5">
+                  <Ruler className="w-4 h-4 text-forest-700" />
+                  {t('auth.farmSize')}
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={farmSize}
+                    onChange={(e) => setFarmSize(e.target.value)}
+                    placeholder={t('auth.farmSizePlaceholder')}
+                    className="flex-1 min-h-[48px] px-4 rounded-xl border-2 border-earth-200 text-base"
+                  />
+                  <select
+                    aria-label={t('auth.farmSizeUnit')}
+                    value={farmSizeUnit}
+                    onChange={(e) => setFarmSizeUnit(e.target.value)}
+                    className="min-h-[48px] px-3 rounded-xl border-2 border-earth-200 bg-white text-sm font-semibold"
+                  >
+                    <option value="acres">{t('auth.acres')}</option>
+                    <option value="hectares">{t('auth.hectares')}</option>
+                  </select>
+                </div>
+              </div>
             </div>
 
             <CurrentLocationPicker
-              title="Work Farm GPS Location"
+              title={t('labourRequest.locationCaptureTitle')}
               initialLocation={{
                 lat: requestGpsCoords?.lat,
                 lng: requestGpsCoords?.lng,
@@ -368,6 +501,7 @@ export default function RequestLabourPage() {
                   required
                   value={village}
                   onChange={(e) => setVillage(e.target.value)}
+                  placeholder={t('labourRequest.villagePlaceholder')}
                   className="w-full min-h-[48px] px-4 rounded-xl border-2 border-earth-200 text-base"
                 />
               </div>
@@ -379,6 +513,7 @@ export default function RequestLabourPage() {
                   type="text"
                   value={district}
                   onChange={(e) => setDistrict(e.target.value)}
+                  placeholder={t('labourRequest.districtPlaceholder')}
                   className="w-full min-h-[48px] px-4 rounded-xl border-2 border-earth-200 text-base"
                 />
               </div>
@@ -430,7 +565,7 @@ export default function RequestLabourPage() {
                   </div>
                 </div>
                 <div className="text-3xl font-extrabold text-forest-900">
-                  {formatCurrency(estimatedTotal)}
+                  {formatCurrency(estimatedTotal, i18n.language)}
                 </div>
               </div>
             </div>
@@ -440,13 +575,17 @@ export default function RequestLabourPage() {
               disabled={submitting}
               className="w-full min-h-[52px] rounded-xl bg-forest-700 hover:bg-forest-800 text-white font-bold text-base shadow-sm transition-colors disabled:opacity-60"
             >
-              {submitting ? t('labourRequest.postingBtn') : t('labourRequest.postBtn')}
+              {submitting
+                ? t('labourRequest.postingBtn')
+                : editingRequestId
+                  ? t('labourRequest.saveEditBtn')
+                  : t('labourRequest.postBtn')}
             </button>
           </form>
         </div>
 
-        {/* My Labour Requests & Worker Applications */}
-        <div className="lg:col-span-5 space-y-4">
+        {/* My Labour Requests, Applications & Confirmed Bookings */}
+        <div id="my-requests" className="lg:col-span-5 space-y-4">
           <h2 className="text-xl font-extrabold text-forest-900">
             {t('labourRequest.myRequestsTitle')}
           </h2>
@@ -461,135 +600,238 @@ export default function RequestLabourPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              {requests.map((req) => (
-                <div
-                  key={req._id}
-                  className="bg-white rounded-2xl border border-earth-200 p-5 shadow-sm space-y-4"
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div>
-                      <span className="text-xs font-mono font-bold text-slate-500">
-                        {t('labourRequest.requestId')}: {req.requestCode}
+              {requests.map((req) => {
+                const reqBookings = confirmedBookings.filter(
+                  (b) => (b.labourRequestId?._id || b.labourRequestId) === req._id
+                );
+                const remaining =
+                  req.remainingVacancies !== undefined
+                    ? req.remainingVacancies
+                    : Math.max(0, req.workersRequired - req.workersAccepted);
+
+                return (
+                  <div
+                    key={req._id}
+                    className="bg-white rounded-2xl border border-earth-200 p-5 shadow-sm space-y-4"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div>
+                        <span className="text-xs font-mono font-bold text-slate-500">
+                          {t('labourRequest.requestId')}: {req.requestCode}
+                        </span>
+                        <h3 className="text-lg font-bold text-slate-900">
+                          {t(`labourRequest.categories.${req.category}`, req.category)}
+                        </h3>
+                      </div>
+                      <BookingStatusBadge status={req.status} />
+                    </div>
+
+                    <div className="text-xs text-slate-600 grid grid-cols-2 gap-2">
+                      <span className="inline-flex items-center gap-1">
+                        <Calendar className="w-3.5 h-3.5" />{' '}
+                        {formatDate(req.startDate, i18n.language)} ({req.durationDays}{' '}
+                        {t('common.days')})
                       </span>
-                      <h3 className="text-lg font-bold text-slate-900">
-                        {t(`labourRequest.categories.${req.category}`, req.category)}
-                      </h3>
+                      <span className="inline-flex items-center gap-1">
+                        <MapPin className="w-3.5 h-3.5" /> {req.location?.village}
+                      </span>
+                      <span className="font-semibold text-forest-800">
+                        {t('labourRequest.workersFilled', {
+                          accepted: req.workersAccepted,
+                          required: req.workersRequired,
+                          remaining,
+                        })}
+                      </span>
+                      <span className="font-bold text-slate-900">
+                        {formatCurrency(req.estimatedTotal || req.budget || 0, i18n.language)}
+                      </span>
                     </div>
-                    <BookingStatusBadge status={req.status} />
-                  </div>
 
-                  <div className="text-xs text-slate-600 grid grid-cols-2 gap-2">
-                    <span className="inline-flex items-center gap-1">
-                      <Calendar className="w-3.5 h-3.5" /> {req.startDate} ({req.durationDays}{' '}
-                      {t('common.days')})
-                    </span>
-                    <span className="inline-flex items-center gap-1">
-                      <MapPin className="w-3.5 h-3.5" /> {req.location?.village}
-                    </span>
-                    <span className="font-semibold text-forest-800">
-                      {t('labourRequest.workersFilled', {
-                        accepted: req.workersAccepted,
-                        required: req.workersRequired,
-                      })}
-                    </span>
-                    <span className="font-bold text-slate-900">
-                      {formatCurrency(req.dailyWage)} {t('common.perDay')} · Est.{' '}
-                      {formatCurrency(req.estimatedTotal)}
-                    </span>
-                  </div>
+                    {req.farmSize ? (
+                      <div className="text-xs text-slate-500 flex items-center gap-1">
+                        <Ruler className="w-3.5 h-3.5" /> {req.farmSize}{' '}
+                        {t(`auth.${req.farmSizeUnit || 'acres'}`)}
+                      </div>
+                    ) : null}
 
-                  {req.preferredHours && (
-                    <div className="text-xs text-slate-500 flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5" /> {req.preferredHours}
-                    </div>
-                  )}
+                    {req.preferredHours && (
+                      <div className="text-xs text-slate-500 flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5" /> {req.preferredHours}
+                      </div>
+                    )}
 
-                  {/* Applications */}
-                  <div className="pt-3 border-t border-earth-200 space-y-2.5">
-                    <div className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                      {t('labourRequest.applicationsTitle')} ({req.applications?.length || 0})
-                    </div>
-                    {!req.applications || req.applications.length === 0 ? (
-                      <p className="text-xs text-slate-500">
-                        {t('labourRequest.noApplications')}
-                      </p>
-                    ) : (
-                      req.applications.map((app) => (
-                        <div
-                          key={app._id}
-                          className="p-3 rounded-xl bg-earth-50 border border-earth-200 space-y-2"
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <div>
-                              <div className="font-bold text-sm text-slate-900">
-                                {app.workerName}
-                              </div>
-                              <div className="text-xs text-slate-600 flex items-center gap-2">
-                                <span>{app.workerVillage}</span>
-                                {app.workerPhone && (
-                                  <span className="inline-flex items-center gap-0.5 text-forest-700 font-semibold">
-                                    <Phone className="w-3 h-3" /> {app.workerPhone}
+                    {/* Confirmed Workers (LabourBooking) */}
+                    <div className="pt-3 border-t border-earth-200 space-y-2.5">
+                      <div className="text-xs font-bold uppercase tracking-wider text-forest-700">
+                        {t('labourRequest.confirmedWorkersTitle')} ({reqBookings.length})
+                      </div>
+                      {reqBookings.length === 0 ? (
+                        <p className="text-xs text-slate-500">
+                          {t('labourRequest.noConfirmedWorkers')}
+                        </p>
+                      ) : (
+                        reqBookings.map((bk) => (
+                          <div
+                            key={bk._id}
+                            className="p-3 rounded-xl bg-emerald-50/70 border border-emerald-200 space-y-2"
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <div className="text-[11px] font-mono text-slate-500">
+                                  {bk.bookingCode}
+                                </div>
+                                <div className="font-bold text-sm text-slate-900">
+                                  {bk.workerId?.name}
+                                </div>
+                                <div className="text-xs text-slate-600 flex flex-wrap items-center gap-2">
+                                  <span>
+                                    {[bk.workerId?.village, bk.workerId?.district]
+                                      .filter(Boolean)
+                                      .join(', ')}
                                   </span>
-                                )}
+                                  {bk.workerId?.phone && (
+                                    <span className="inline-flex items-center gap-0.5 text-forest-800 font-semibold">
+                                      <Phone className="w-3 h-3" /> {bk.workerId.phone}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
+                              <BookingStatusBadge status={bk.bookingStatus} />
                             </div>
-                            <BookingStatusBadge status={app.status} />
-                          </div>
 
-                          {app.skills?.length > 0 && (
-                            <div className="flex flex-wrap gap-1">
-                              {app.skills.map((sk) => (
-                                <span
-                                  key={sk}
-                                  className="px-2 py-0.5 rounded bg-white border border-earth-200 text-[11px] font-medium"
-                                >
-                                  {sk}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-
-                          {app.status === 'Pending' &&
-                            ['Open', 'Partially Filled'].includes(req.status) && (
-                              <div className="flex gap-2 pt-1">
+                            {['Accepted', 'In Progress'].includes(bk.bookingStatus) && (
+                              <div className="flex flex-wrap gap-1.5 pt-1">
+                                {bk.bookingStatus === 'Accepted' && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handleUpdateBookingStatus(bk._id, 'In Progress')
+                                    }
+                                    className="px-2.5 min-h-[34px] inline-flex items-center gap-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold"
+                                  >
+                                    <Play className="w-3 h-3" />
+                                    {t('labourRequest.startWorkBtn')}
+                                  </button>
+                                )}
                                 <button
                                   type="button"
                                   onClick={() =>
-                                    handleReviewApplication(req._id, app._id, 'Accepted')
+                                    handleUpdateBookingStatus(bk._id, 'Completed')
                                   }
-                                  className="flex-1 min-h-[40px] inline-flex items-center justify-center gap-1 rounded-xl bg-forest-700 hover:bg-forest-800 text-white text-xs font-bold"
+                                  className="px-2.5 min-h-[34px] inline-flex items-center gap-1 rounded-lg bg-forest-700 hover:bg-forest-800 text-white text-xs font-semibold"
                                 >
-                                  <CheckCircle2 className="w-3.5 h-3.5" />
-                                  {t('labourRequest.acceptWorker')}
+                                  <Flag className="w-3 h-3" />
+                                  {t('labourRequest.completeWorkBtn')}
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() =>
-                                    handleReviewApplication(req._id, app._id, 'Rejected')
+                                    handleUpdateBookingStatus(bk._id, 'Cancelled')
                                   }
-                                  className="px-3 min-h-[40px] inline-flex items-center justify-center gap-1 rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-100 text-xs font-bold"
+                                  className="px-2.5 min-h-[34px] inline-flex items-center gap-1 rounded-lg border border-rose-200 text-rose-700 hover:bg-rose-50 text-xs font-semibold"
                                 >
-                                  <XCircle className="w-3.5 h-3.5" />
-                                  {t('labourRequest.rejectWorker')}
+                                  {t('labourRequest.cancelBookingBtn')}
                                 </button>
                               </div>
                             )}
-                        </div>
-                      ))
-                    )}
-                  </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
 
-                  {['Open', 'Partially Filled'].includes(req.status) && (
-                    <button
-                      type="button"
-                      onClick={() => handleCancelRequest(req._id)}
-                      className="min-h-[40px] px-3 rounded-xl border border-rose-200 text-rose-700 hover:bg-rose-50 text-xs font-semibold"
-                    >
-                      {t('labourRequest.cancelBtn')}
-                    </button>
-                  )}
-                </div>
-              ))}
+                    {/* Applications */}
+                    {req.applications?.length > 0 && (
+                      <div className="pt-3 border-t border-earth-200 space-y-2.5">
+                        <div className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                          {t('labourRequest.applicationsTitle')} ({req.applications.length})
+                        </div>
+                        {req.applications.map((app) => (
+                          <div
+                            key={app._id}
+                            className="p-3 rounded-xl bg-earth-50 border border-earth-200 space-y-2"
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <div className="font-bold text-sm text-slate-900">
+                                  {app.workerName}
+                                </div>
+                                <div className="text-xs text-slate-600 flex flex-wrap items-center gap-2">
+                                  <span>{app.workerVillage}</span>
+                                  <span>
+                                    ({app.numberOfWorkers || 1} {t('common.workers')})
+                                  </span>
+                                  {app.workerPhone && (
+                                    <span className="inline-flex items-center gap-0.5 text-forest-700 font-semibold">
+                                      <Phone className="w-3 h-3" /> {app.workerPhone}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <BookingStatusBadge status={app.status} />
+                            </div>
+
+                            {app.status === 'Pending' &&
+                              [
+                                'Open',
+                                'Applications Received',
+                                'Pending',
+                                'Worker Accepted',
+                                'Partially Filled',
+                              ].includes(req.status) && (
+                                <div className="flex gap-2 pt-1">
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handleReviewApplication(app._id, 'Accepted')
+                                    }
+                                    className="flex-1 min-h-[40px] inline-flex items-center justify-center gap-1 rounded-xl bg-forest-700 hover:bg-forest-800 text-white text-xs font-bold"
+                                  >
+                                    <CheckCircle2 className="w-3.5 h-3.5" />
+                                    {t('labourRequest.acceptWorker')}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handleReviewApplication(app._id, 'Rejected')
+                                    }
+                                    className="px-3 min-h-[40px] inline-flex items-center justify-center gap-1 rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-100 text-xs font-bold"
+                                  >
+                                    <XCircle className="w-3.5 h-3.5" />
+                                    {t('labourRequest.rejectWorker')}
+                                  </button>
+                                </div>
+                              )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="flex flex-wrap gap-2">
+                      {EDITABLE_STATUSES.includes(req.status) && (
+                        <button
+                          type="button"
+                          onClick={() => startEditRequest(req)}
+                          className="min-h-[40px] px-3 inline-flex items-center gap-1 rounded-xl border border-forest-200 text-forest-800 hover:bg-forest-50 text-xs font-semibold"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                          {t('labourRequest.editRequestBtn')}
+                        </button>
+                      )}
+                      {['Open', 'Applications Received', 'Pending', 'Worker Accepted', 'Partially Filled'].includes(
+                        req.status
+                      ) && (
+                        <button
+                          type="button"
+                          onClick={() => handleCancelRequest(req._id)}
+                          className="min-h-[40px] px-3 rounded-xl border border-rose-200 text-rose-700 hover:bg-rose-50 text-xs font-semibold"
+                        >
+                          {t('labourRequest.cancelBtn')}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

@@ -14,13 +14,17 @@ export const EQUIPMENT_CATEGORIES = [
 ];
 
 export const LABOUR_CATEGORIES = [
-  'Harvesting',
-  'Sowing',
-  'Transplantation',
+  'Sowing / Planting',
+  'Transplanting',
   'Weeding',
-  'Spraying',
-  'Irrigation',
-  'General Farm Labour',
+  'Harvesting',
+  'Pesticide Spraying',
+  'Tractor / Machinery Operator',
+  'Irrigation Work',
+  'Land Preparation',
+  'Fertilizer Application',
+  'General Farm Help',
+  'Other Agricultural Work',
 ];
 
 export const FACILITY_CATEGORIES = [
@@ -78,7 +82,14 @@ export const REGION_OPTIONS = [
 
 export const STATUS_BADGES = {
   Pending: 'bg-amber-100 text-amber-800 border-amber-200',
+  Open: 'bg-sky-100 text-sky-800 border-sky-200',
+  'Applications Received': 'bg-violet-100 text-violet-800 border-violet-200',
+  'Worker Accepted': 'bg-emerald-100 text-emerald-800 border-emerald-200',
   Accepted: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+  'Partially Filled': 'bg-amber-100 text-amber-800 border-amber-200',
+  Filled: 'bg-forest-100 text-forest-800 border-forest-200',
+  'Fully Filled': 'bg-forest-100 text-forest-800 border-forest-200',
+  'In Progress': 'bg-indigo-100 text-indigo-800 border-indigo-200',
   Rejected: 'bg-rose-100 text-rose-800 border-rose-200',
   Cancelled: 'bg-slate-100 text-slate-700 border-slate-200',
   Completed: 'bg-forest-100 text-forest-700 border-forest-200',

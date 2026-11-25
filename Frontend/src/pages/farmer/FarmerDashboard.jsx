@@ -8,7 +8,6 @@ import {
   Warehouse,
   CalendarCheck,
   PlayCircle,
-  HelpCircle,
   Bell,
   MapPin,
   User as UserIcon,
@@ -16,6 +15,8 @@ import {
   PlusCircle,
   RefreshCw,
   Loader2,
+  ClipboardList,
+  Settings,
 } from 'lucide-react';
 import api, { getErrorMessage } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -23,11 +24,11 @@ import { useLocationContext } from '../../context/LocationContext';
 import LocationSelector from '../../components/LocationSelector';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
 import { BookingStatusBadge } from '../../components/StatusBadge';
-import { formatCurrency } from '../../utils/distance';
+import { formatCurrency, formatDate } from '../../utils/distance';
 
 export default function FarmerDashboard() {
   const { user, updateProfile } = useAuth();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { coords, hasCoords, radius, detectBrowserLocation, detecting } =
     useLocationContext();
   const [stats, setStats] = useState(null);
@@ -64,7 +65,7 @@ export default function FarmerDashboard() {
       });
       toast.success(t('gps.capturedSuccess'));
     } catch (err) {
-      toast.error(getErrorMessage(err, 'GPS captured locally, but profile save failed.'));
+      toast.error(getErrorMessage(err, t('dashboard.gpsProfileError')));
     }
   }
 
@@ -72,13 +73,20 @@ export default function FarmerDashboard() {
   const upcomingCount = (stats?.upcomingBookings || []).length;
   const totalAlerts = pendingAppsCount + upcomingCount;
 
-  const secondaryCards = [
+  const actionCards = [
     {
       to: '/machinery',
       icon: Tractor,
       title: t('dashboard.actions.findEquipment'),
       desc: t('dashboard.actions.findEquipmentDesc'),
       iconCls: 'bg-forest-50 text-forest-700',
+    },
+    {
+      to: '/labour',
+      icon: Users,
+      title: t('dashboard.actions.findWorkers'),
+      desc: t('dashboard.actions.findWorkersDesc'),
+      iconCls: 'bg-harvest-100 text-harvest-700',
     },
     {
       to: '/facilities',
@@ -88,27 +96,45 @@ export default function FarmerDashboard() {
       iconCls: 'bg-sky-50 text-sky-700',
     },
     {
+      to: '/farmer/request-labour#my-requests',
+      icon: ClipboardList,
+      title: t('dashboard.actions.myLabourRequests'),
+      desc: t('dashboard.actions.myLabourRequestsDesc'),
+      iconCls: 'bg-emerald-50 text-emerald-700',
+    },
+    {
       to: '/farmer/bookings',
       icon: CalendarCheck,
       title: t('dashboard.actions.myBookings'),
       desc: t('dashboard.actions.myBookingsDesc'),
-      iconCls: 'bg-emerald-50 text-emerald-700',
+      iconCls: 'bg-forest-50 text-forest-700',
     },
     {
       to: '/labour-demo',
       icon: PlayCircle,
       title: t('dashboard.actions.labourDemo'),
       desc: t('dashboard.actions.labourDemoDesc'),
-      iconCls: 'bg-harvest-100 text-harvest-700',
+      iconCls: 'bg-amber-50 text-amber-700',
     },
     {
-      to: '/how-it-works',
-      icon: HelpCircle,
-      title: t('dashboard.actions.help'),
-      desc: t('dashboard.actions.helpDesc'),
+      to: '/profile',
+      icon: Settings,
+      title: t('dashboard.actions.profileSettings'),
+      desc: t('dashboard.actions.profileSettingsDesc'),
       iconCls: 'bg-earth-100 text-earth-700',
     },
+    {
+      to: '/nearby-map',
+      icon: MapPin,
+      title: t('dashboard.actions.nearbyMap'),
+      desc: t('dashboard.actions.nearbyMapDesc'),
+      iconCls: 'bg-sky-50 text-sky-700',
+    },
   ];
+
+  const locationSummaryText =
+    [user?.village, user?.district, user?.state].filter(Boolean).join(', ') ||
+    t('dashboard.locationNotAdded');
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
@@ -118,19 +144,17 @@ export default function FarmerDashboard() {
           <div className="flex items-center gap-4">
             <img
               src="/images/hero-farmer.jpg"
-              alt={user?.name || 'Farmer'}
+              alt={user?.name || t('roles.farmer')}
               className="w-16 h-16 rounded-2xl object-cover object-right border-2 border-forest-200 shrink-0"
             />
             <div>
               <h1 className="text-xl sm:text-2xl font-extrabold text-forest-900">
-                {t('dashboard.welcome', { name: user?.name || 'Farmer' })}
+                {t('dashboard.welcome', { name: user?.name || t('roles.farmer') })}
               </h1>
               <div className="text-xs sm:text-sm text-slate-600 flex flex-wrap items-center gap-2 mt-0.5">
-                <span className="inline-flex items-center gap-1">
+                <span className="inline-flex items-center gap-1 font-medium">
                   <MapPin className="w-4 h-4 text-forest-700 shrink-0" />
-                  {[user?.village, user?.district, user?.state]
-                    .filter(Boolean)
-                    .join(', ') || t('gps.notSet')}
+                  {locationSummaryText}
                 </span>
                 {user?.primaryCrop && <span>· {user.primaryCrop}</span>}
                 <button
@@ -177,7 +201,7 @@ export default function FarmerDashboard() {
                   <div className="font-bold text-slate-900">
                     {t('dashboard.notifications')}
                   </div>
-                  {pendingAppsCount > 0 ? (
+                  {pendingAppsCount > 0 && (
                     <Link
                       to="/farmer/request-labour"
                       onClick={() => setNotifOpen(false)}
@@ -185,7 +209,17 @@ export default function FarmerDashboard() {
                     >
                       {t('dashboard.pendingAppsAlert', { count: pendingAppsCount })}
                     </Link>
-                  ) : (
+                  )}
+                  {upcomingCount > 0 && (
+                    <Link
+                      to="/farmer/bookings"
+                      onClick={() => setNotifOpen(false)}
+                      className="block p-2.5 rounded-xl bg-sky-50 text-sky-900 font-semibold hover:bg-sky-100"
+                    >
+                      {t('dashboard.upcomingBookingsAlert', { count: upcomingCount })}
+                    </Link>
+                  )}
+                  {totalAlerts === 0 && (
                     <p className="text-slate-500">{t('dashboard.noAlerts')}</p>
                   )}
                 </div>
@@ -203,18 +237,18 @@ export default function FarmerDashboard() {
         </div>
       </div>
 
-      {/* Prominent Request Labour Hero Card + 5 Main Action Cards */}
+      {/* Prominent Request Labour Hero Card + Discovery & Management Action Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         <Link
           to="/farmer/request-labour"
-          className="lg:col-span-5 bg-forest-700 hover:bg-forest-800 text-white rounded-3xl p-6 sm:p-7 shadow-md transition-colors flex flex-col justify-between min-h-[180px]"
+          className="lg:col-span-4 bg-forest-700 hover:bg-forest-800 text-white rounded-3xl p-6 sm:p-7 shadow-md transition-colors flex flex-col justify-between min-h-[200px]"
         >
           <div className="flex items-start justify-between gap-3">
             <div className="w-14 h-14 rounded-2xl bg-fresh-500 text-forest-900 flex items-center justify-center shrink-0">
               <Users className="w-7 h-7" />
             </div>
             <span className="px-3 py-1 rounded-full bg-white/15 text-xs font-bold">
-              Priority Action
+              {t('dashboard.postNewRequest')}
             </span>
           </div>
           <div className="mt-5">
@@ -224,31 +258,31 @@ export default function FarmerDashboard() {
             </p>
             <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white text-forest-800 font-bold text-sm">
               <PlusCircle className="w-4 h-4" />
-              {t('dashboard.postNewRequest')}
+              {t('dashboard.actions.requestLabour')}
             </div>
           </div>
         </Link>
 
-        <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {secondaryCards.map((card) => {
+        <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+          {actionCards.map((card) => {
             const Icon = card.icon;
             return (
               <Link
                 key={card.to}
                 to={card.to}
-                className="bg-white hover:border-forest-500 rounded-2xl border border-earth-200 p-5 shadow-sm transition-all flex flex-col justify-between min-h-[130px]"
+                className="bg-white hover:border-forest-500 rounded-2xl border border-earth-200 p-4 shadow-sm transition-all flex flex-col justify-between min-h-[125px]"
               >
                 <div
-                  className={`w-11 h-11 rounded-xl flex items-center justify-center ${card.iconCls}`}
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center ${card.iconCls}`}
                 >
                   <Icon className="w-5 h-5" />
                 </div>
                 <div className="mt-3">
-                  <div className="font-bold text-base text-slate-900 flex items-center justify-between">
-                    {card.title}
-                    <ArrowRight className="w-4 h-4 text-slate-400" />
+                  <div className="font-bold text-sm text-slate-900 flex items-center justify-between gap-1">
+                    <span>{card.title}</span>
+                    <ArrowRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                   </div>
-                  <p className="text-xs text-slate-600 mt-0.5">{card.desc}</p>
+                  <p className="text-xs text-slate-600 mt-0.5 line-clamp-2">{card.desc}</p>
                 </div>
               </Link>
             );
@@ -288,18 +322,19 @@ export default function FarmerDashboard() {
                   <Link
                     key={req._id}
                     to="/farmer/request-labour"
-                    className="flex items-center justify-between p-3.5 rounded-xl border border-earth-200 hover:bg-earth-50 transition-colors"
+                    className="flex items-center justify-between p-3.5 rounded-xl border border-earth-200 hover:bg-earth-50 transition-colors gap-2"
                   >
                     <div>
                       <div className="font-bold text-sm text-slate-900">
-                        {t(`labourRequest.categories.${req.category}`, req.category)} ·{' '}
+                        {t(`categories.labour.${req.category}`, req.category)} ·{' '}
                         <span className="text-xs font-mono text-slate-500">
                           {req.requestCode}
                         </span>
                       </div>
                       <div className="text-xs text-slate-600 mt-0.5">
                         {req.workersAccepted}/{req.workersRequired} {t('common.workers')} ·{' '}
-                        {req.startDate} · {formatCurrency(req.estimatedTotal)}
+                        {formatDate(req.startDate, i18n.language)} ·{' '}
+                        {formatCurrency(req.estimatedTotal, i18n.language)}
                       </div>
                     </div>
                     <BookingStatusBadge status={req.status} />
@@ -333,14 +368,15 @@ export default function FarmerDashboard() {
                   <Link
                     key={b._id}
                     to={`/bookings/${b._id}`}
-                    className="flex items-center justify-between p-3.5 rounded-xl border border-earth-200 hover:bg-earth-50 transition-colors"
+                    className="flex items-center justify-between p-3.5 rounded-xl border border-earth-200 hover:bg-earth-50 transition-colors gap-2"
                   >
                     <div>
                       <div className="font-semibold text-sm text-slate-900">
                         {b.serviceName}
                       </div>
                       <div className="text-xs text-slate-500 mt-0.5">
-                        {b.bookingDate} · {formatCurrency(b.estimatedCost)}
+                        {formatDate(b.bookingDate, i18n.language)} ·{' '}
+                        {formatCurrency(b.estimatedCost, i18n.language)}
                       </div>
                     </div>
                     <BookingStatusBadge status={b.status} />

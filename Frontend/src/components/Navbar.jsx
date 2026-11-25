@@ -12,7 +12,7 @@ import {
   PlayCircle,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { PROVIDER_ROLES, ROLE_LABELS } from '../utils/constants';
+import { PROVIDER_ROLES } from '../utils/constants';
 import LanguageSwitcher from './LanguageSwitcher';
 
 export default function Navbar() {
@@ -126,7 +126,7 @@ export default function Navbar() {
                         {user.name.split(' ')[0]}
                       </div>
                       <div className="text-[10px] text-slate-500">
-                        {ROLE_LABELS[user.role]}
+                        {t(`roles.${user.role}`, user.role)}
                       </div>
                     </div>
                   </Link>
@@ -160,7 +160,7 @@ export default function Navbar() {
             <button
               onClick={() => setMobileOpen((prev) => !prev)}
               className="lg:hidden min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-slate-700 hover:bg-earth-100"
-              aria-label="Toggle navigation"
+              aria-label={t('nav.toggleMenu')}
             >
               {mobileOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>

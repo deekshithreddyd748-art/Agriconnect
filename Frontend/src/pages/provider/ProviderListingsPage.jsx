@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { PlusCircle, Edit3, Trash2, MapPin } from 'lucide-react';
 import api, { getErrorMessage } from '../../services/api';
@@ -15,6 +16,7 @@ const ROLE_ENDPOINT = {
 
 export default function ProviderListingsPage() {
   const { user } = useAuth();
+  const { t, i18n } = useTranslation();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -34,13 +36,13 @@ export default function ProviderListingsPage() {
   }, [user]);
 
   async function handleDelete(id) {
-    if (!window.confirm('Delete this listing permanently?')) return;
+    if (!window.confirm(t('provider.confirmDeleteListing'))) return;
     try {
       await api.delete(`${cfg.endpoint}/${id}`);
-      toast.success('Listing deleted.');
+      toast.success(t('common.saveSuccess'));
       fetchListings();
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to delete listing.'));
+      toast.error(getErrorMessage(err, t('common.errorGeneric')));
     }
   }
 
@@ -49,42 +51,43 @@ export default function ProviderListingsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-forest-900">
-            My Service Listings
+            {t('provider.listingsTitle')}
           </h1>
-          <p className="text-sm text-slate-600 mt-0.5">
-            Create, edit, and manage availability for your agricultural listings.
-          </p>
+          <p className="text-sm text-slate-600 mt-0.5">{t('provider.subtitle')}</p>
         </div>
         <Link
           to="/provider/listings/new"
           className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-forest-700 hover:bg-forest-800 text-white text-sm font-semibold w-fit"
         >
-          <PlusCircle className="w-4 h-4" /> Add New Listing
+          <PlusCircle className="w-4 h-4" /> {t('provider.actions.addNewListing')}
         </Link>
       </div>
 
       {loading ? (
-        <div className="py-12 text-center text-sm text-slate-500">Loading your listings...</div>
+        <div className="py-12 text-center text-sm text-slate-500">{t('common.loading')}</div>
       ) : items.length === 0 ? (
         <div className="bg-white rounded-2xl border border-earth-200 p-10 text-center space-y-3">
-          <p className="font-semibold text-slate-800">You have no listings yet.</p>
+          <p className="font-semibold text-slate-800">{t('provider.noListings')}</p>
           <Link
             to="/provider/listings/new"
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-forest-700 text-white text-xs font-semibold"
           >
-            <PlusCircle className="w-4 h-4" /> Create Your First Listing
+            <PlusCircle className="w-4 h-4" /> {t('provider.actions.addNewListing')}
           </Link>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {items.map((item) => {
-            const title = item.name || item.title || `${item.category} Team`;
+            const title =
+              item.name ||
+              item.title ||
+              t(`categories.${cfg.type === 'facility' ? 'facility' : cfg.type}.${item.category}`, item.category);
             const priceText =
               cfg.type === 'labour'
-                ? `${formatCurrency(item.pricePerWorker)} / worker / ${item.priceUnit}`
+                ? `${formatCurrency(item.pricePerWorker, i18n.language)} / ${item.priceUnit}`
                 : cfg.type === 'facility'
-                  ? `${formatCurrency(item.price)} ${item.priceUnit}`
-                  : `${formatCurrency(item.price)} / ${item.priceUnit}`;
+                  ? `${formatCurrency(item.price, i18n.language)} ${item.priceUnit}`
+                  : `${formatCurrency(item.price, i18n.language)} / ${item.priceUnit}`;
 
             return (
               <div
@@ -94,7 +97,7 @@ export default function ProviderListingsPage() {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-xs font-bold uppercase tracking-wider text-fresh-600">
-                      {item.category}
+                      {t(`categories.${cfg.type === 'facility' ? 'facility' : cfg.type}.${item.category}`, item.category)}
                     </span>
                     <AvailabilityBadge available={item.availability} />
                   </div>
@@ -104,7 +107,7 @@ export default function ProviderListingsPage() {
                     <MapPin className="w-3.5 h-3.5" />
                     {[item.location?.village, item.location?.district]
                       .filter(Boolean)
-                      .join(', ') || 'No location set'}
+                      .join(', ') || t('common.locationUnavailable')}
                   </div>
                 </div>
 
@@ -115,14 +118,14 @@ export default function ProviderListingsPage() {
                       to={`/provider/listings/${cfg.type}/${item._id}/edit`}
                       className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-forest-50 text-forest-800 hover:bg-forest-100 text-xs font-semibold"
                     >
-                      <Edit3 className="w-3.5 h-3.5" /> Edit
+                      <Edit3 className="w-3.5 h-3.5" /> {t('common.edit')}
                     </Link>
                     <button
                       type="button"
                       onClick={() => handleDelete(item._id)}
                       className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-100 text-xs font-semibold"
                     >
-                      <Trash2 className="w-3.5 h-3.5" /> Delete
+                      <Trash2 className="w-3.5 h-3.5" /> {t('common.delete')}
                     </button>
                   </div>
                 </div>

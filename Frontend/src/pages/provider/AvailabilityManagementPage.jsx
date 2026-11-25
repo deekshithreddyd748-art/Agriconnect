@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { ToggleLeft, ToggleRight } from 'lucide-react';
 import api, { getErrorMessage } from '../../services/api';
@@ -13,6 +14,7 @@ const ROLE_CFG = {
 
 export default function AvailabilityManagementPage() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const cfg = ROLE_CFG[user?.role] || ROLE_CFG.equipment_owner;
@@ -35,10 +37,10 @@ export default function AvailabilityManagementPage() {
       await api.put(`${cfg.endpoint}/${item._id}`, {
         availability: !item.availability,
       });
-      toast.success('Availability updated.');
+      toast.success(t('common.saveSuccess'));
       fetchItems();
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to update availability.'));
+      toast.error(getErrorMessage(err, t('common.errorGeneric')));
     }
   }
 
@@ -46,19 +48,16 @@ export default function AvailabilityManagementPage() {
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold text-forest-900">
-          Availability Management
+          {t('provider.availabilityTitle')}
         </h1>
-        <p className="text-sm text-slate-600 mt-0.5">
-          Quickly mark your equipment, labour crews, or facilities as available or
-          temporarily unavailable.
-        </p>
+        <p className="text-sm text-slate-600 mt-0.5">{t('provider.subtitle')}</p>
       </div>
 
       {loading ? (
-        <div className="py-12 text-center text-sm text-slate-500">Loading listings...</div>
+        <div className="py-12 text-center text-sm text-slate-500">{t('common.loading')}</div>
       ) : items.length === 0 ? (
         <div className="bg-white rounded-2xl border border-earth-200 p-8 text-center text-sm text-slate-500">
-          No listings to manage yet.
+          {t('provider.noListings')}
         </div>
       ) : (
         <div className="space-y-3">
@@ -69,20 +68,22 @@ export default function AvailabilityManagementPage() {
             >
               <div>
                 <div className="text-xs font-bold uppercase text-fresh-600">
-                  {item.category}
+                  {t(`categories.${cfg.type}.${item.category}`, item.category)}
                 </div>
                 <div className="text-base font-bold text-slate-900">
-                  {item.name || item.title || `${item.category} Team`}
+                  {item.name ||
+                    item.title ||
+                    t(`categories.${cfg.type}.${item.category}`, item.category)}
                 </div>
                 {cfg.type === 'facility' && (
                   <div className="text-xs text-slate-500">
-                    Remaining Capacity: {item.availableCapacity} / {item.capacity}{' '}
-                    {item.capacityUnit}
+                    {t('marketplace.capacityLabel')}: {item.availableCapacity} /{' '}
+                    {item.capacity} {item.capacityUnit}
                   </div>
                 )}
                 {cfg.type === 'labour' && (
                   <div className="text-xs text-slate-500">
-                    Workers Available: {item.workersAvailable}
+                    {t('marketplace.workersAvailable', { count: item.workersAvailable })}
                   </div>
                 )}
               </div>
@@ -100,11 +101,11 @@ export default function AvailabilityManagementPage() {
                 >
                   {item.availability ? (
                     <>
-                      <ToggleRight className="w-4 h-4" /> Mark Unavailable
+                      <ToggleRight className="w-4 h-4" /> {t('provider.toggleUnavailable')}
                     </>
                   ) : (
                     <>
-                      <ToggleLeft className="w-4 h-4" /> Mark Available
+                      <ToggleLeft className="w-4 h-4" /> {t('provider.toggleAvailable')}
                     </>
                   )}
                 </button>

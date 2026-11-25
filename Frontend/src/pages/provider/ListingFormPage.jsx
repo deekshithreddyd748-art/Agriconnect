@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { ArrowLeft, Save } from 'lucide-react';
 import api, { getErrorMessage } from '../../services/api';
@@ -25,6 +26,7 @@ const TYPE_TO_ENDPOINT = {
 
 export default function ListingFormPage() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { type: paramType, id } = useParams();
 
@@ -222,10 +224,10 @@ export default function ListingFormPage() {
         else await api.post(endpoint, fd);
       }
 
-      toast.success(isEdit ? 'Listing updated!' : 'New listing published!');
+      toast.success(t('common.saveSuccess'));
       navigate('/provider/listings');
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to save listing.'));
+      toast.error(getErrorMessage(err, t('common.errorGeneric')));
     } finally {
       setSaving(false);
     }
@@ -244,24 +246,19 @@ export default function ListingFormPage() {
         to="/provider/listings"
         className="inline-flex items-center gap-1.5 text-sm font-semibold text-forest-700 hover:underline"
       >
-        <ArrowLeft className="w-4 h-4" /> Back to My Listings
+        <ArrowLeft className="w-4 h-4" /> {t('provider.actions.manageListings')}
       </Link>
 
       <div className="bg-white rounded-3xl border border-earth-200 p-6 sm:p-8 shadow-sm">
         <h1 className="text-2xl font-bold text-forest-900 mb-6">
-          {isEdit ? 'Edit' : 'Add New'}{' '}
-          {listingType === 'equipment'
-            ? 'Equipment Listing'
-            : listingType === 'labour'
-              ? 'Labour Team Listing'
-              : 'Post-Harvest Facility'}
+          {isEdit ? t('provider.editListingTitle') : t('provider.newListingTitle')}
         </h1>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
-                {listingType === 'labour' ? 'Team / Profile Title *' : 'Listing Name *'}
+                {t('provider.titleLabel')} *
               </label>
               <input
                 type="text"
@@ -273,20 +270,14 @@ export default function ListingFormPage() {
                     e.target.value
                   )
                 }
-                placeholder={
-                  listingType === 'equipment'
-                    ? 'e.g., John Deere 5310 Tractor'
-                    : listingType === 'labour'
-                      ? 'e.g., GreenHarvest 12-Member Squad'
-                      : 'e.g., Sahyadri Cold Storage'
-                }
+                placeholder={t('provider.titleLabel')}
                 className="w-full min-h-[44px] px-3.5 rounded-xl border border-earth-200 text-sm"
               />
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Category *
+                {t('provider.categoryLabel')} *
               </label>
               <select
                 value={form.category}
@@ -295,7 +286,10 @@ export default function ListingFormPage() {
               >
                 {categories.map((cat) => (
                   <option key={cat} value={cat}>
-                    {cat}
+                    {t(
+                      `categories.${listingType === 'facility' ? 'facility' : listingType}.${cat}`,
+                      cat
+                    )}
                   </option>
                 ))}
               </select>
@@ -304,7 +298,7 @@ export default function ListingFormPage() {
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Description *
+              {t('provider.descriptionLabel')} *
             </label>
             <textarea
               rows={3}
@@ -590,7 +584,7 @@ export default function ListingFormPage() {
 
           <div className="pt-3 border-t border-earth-200 space-y-4">
             <CurrentLocationPicker
-              title="Service GPS Location (Uses Saved Profile GPS or Tap to Refresh)"
+              title={t('gps.headerLabel')}
               initialLocation={{
                 lat: form.lat,
                 lng: form.lng,
@@ -607,21 +601,21 @@ export default function ListingFormPage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <input
                 type="text"
-                placeholder="Village"
+                placeholder={t('auth.village')}
                 value={form.village}
                 onChange={(e) => updateField('village', e.target.value)}
                 className="min-h-[44px] px-3 rounded-xl border border-earth-200 text-sm"
               />
               <input
                 type="text"
-                placeholder="District"
+                placeholder={t('auth.district')}
                 value={form.district}
                 onChange={(e) => updateField('district', e.target.value)}
                 className="min-h-[44px] px-3 rounded-xl border border-earth-200 text-sm"
               />
               <input
                 type="text"
-                placeholder="State"
+                placeholder={t('auth.state')}
                 value={form.state}
                 onChange={(e) => updateField('state', e.target.value)}
                 className="min-h-[44px] px-3 rounded-xl border border-earth-200 text-sm"
@@ -636,7 +630,7 @@ export default function ListingFormPage() {
               onChange={(e) => updateField('availability', e.target.checked)}
               className="rounded border-earth-200 text-forest-700 focus:ring-forest-500"
             />
-            Listing is currently available for bookings
+            {t('common.available')}
           </label>
 
           <button
@@ -645,7 +639,7 @@ export default function ListingFormPage() {
             className="w-full min-h-[48px] inline-flex items-center justify-center gap-2 rounded-xl bg-forest-700 hover:bg-forest-800 text-white font-semibold text-sm disabled:opacity-60"
           >
             <Save className="w-4 h-4" />
-            {saving ? 'Saving Listing...' : isEdit ? 'Save Changes' : 'Publish Listing'}
+            {saving ? t('common.submitting') : t('provider.saveListingBtn')}
           </button>
         </form>
       </div>

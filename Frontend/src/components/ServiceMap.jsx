@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import L from 'leaflet';
-import { hasValidCoords } from '../utils/distance';
+import { formatNumber, hasValidCoords } from '../utils/distance';
 
 const TYPE_COLORS = {
   equipment: '#14532D',
@@ -24,6 +25,7 @@ export default function ServiceMap({
   height = '440px',
   defaultType = 'equipment',
 }) {
+  const { t, i18n } = useTranslation();
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const layerGroupRef = useRef(null);
@@ -67,9 +69,9 @@ export default function ServiceMap({
       bounds.push(center);
 
       L.marker(center, {
-        icon: createCircleIcon('#DC2626', 'Me'),
+        icon: createCircleIcon('#DC2626', '•'),
       })
-        .bindPopup('<strong>Your GPS Location</strong>')
+        .bindPopup(`<strong>${t('gps.locationSavedChip')}</strong>`)
         .addTo(layer);
 
       if (radiusKm > 0) {
@@ -98,18 +100,29 @@ export default function ServiceMap({
             : `/facilities/${item._id}`;
 
       const title = item.displayTitle || item.name || item.title || item.category;
-      const distanceHtml =
+      const distNum =
         item.distanceKm !== null && item.distanceKm !== undefined
-          ? `<div style="color:#14532D;font-weight:600;margin-top:2px;">${item.distanceKm} km away</div>`
+          ? formatNumber(item.distanceKm, i18n.language, { maximumFractionDigits: 1 })
+          : null;
+      const distanceHtml =
+        distNum !== null
+          ? `<div style="color:#14532D;font-weight:600;margin-top:2px;">${t('common.kmAway', {
+              distance: distNum,
+            })}</div>`
           : '';
+
+      const catLabel = t(
+        `categories.${type === 'facility' ? 'facility' : type}.${item.category}`,
+        item.category || type
+      );
 
       const popupHtml = `
         <div style="min-width:170px;font-family:sans-serif;">
-          <div style="font-size:11px;text-transform:uppercase;color:#64748b;font-weight:700;">${item.category || type}</div>
+          <div style="font-size:11px;text-transform:uppercase;color:#64748b;font-weight:700;">${catLabel}</div>
           <div style="font-size:14px;font-weight:700;color:#0f172a;margin:2px 0;">${title}</div>
           <div style="font-size:12px;color:#475569;">${item.location?.village || ''} ${item.location?.district || ''}</div>
           ${distanceHtml}
-          <a href="${detailPath}" style="display:inline-block;margin-top:8px;padding:4px 10px;background:#14532D;color:#fff;border-radius:6px;text-decoration:none;font-size:12px;font-weight:600;">View Details</a>
+          <a href="${detailPath}" style="display:inline-block;margin-top:8px;padding:4px 10px;background:#14532D;color:#fff;border-radius:6px;text-decoration:none;font-size:12px;font-weight:600;">${t('common.viewDetails')}</a>
         </div>
       `;
 
@@ -123,7 +136,7 @@ export default function ServiceMap({
     if (bounds.length > 0) {
       map.fitBounds(bounds, { padding: [36, 36], maxZoom: 13 });
     }
-  }, [items, userCoords, radiusKm, defaultType]);
+  }, [items, userCoords, radiusKm, defaultType, i18n.language, t]);
 
   return (
     <div

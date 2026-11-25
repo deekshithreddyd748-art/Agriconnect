@@ -16,7 +16,7 @@ export default function LanguageSwitcher({ compact = false, className = '' }) {
         </span>
       )}
       <select
-        aria-label="Select regional language"
+        aria-label={t('nav.language')}
         value={i18n.language}
         onChange={(e) => setAppLanguage(e.target.value)}
         className="bg-transparent text-xs sm:text-sm font-bold text-forest-800 focus:outline-none cursor-pointer pr-1"

@@ -12,12 +12,15 @@ import { STATUS_BADGES } from '../utils/constants';
 
 const STATUS_ICONS = {
   Pending: Clock,
+  'Applications Received': Users,
+  'Worker Accepted': CheckCircle2,
   Accepted: CheckCircle2,
   Rejected: XCircle,
   Cancelled: Ban,
   Completed: Sparkles,
   Open: CircleDot,
   'Partially Filled': Users,
+  Filled: CheckCircle2,
   'Fully Filled': CheckCircle2,
   'In Progress': Clock,
 };
@@ -39,15 +42,16 @@ export function BookingStatusBadge({ status }) {
 }
 
 export function AvailabilityBadge({ available }) {
+  const { t } = useTranslation();
   return available ? (
     <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
       <CheckCircle2 className="w-3 h-3" aria-hidden="true" />
-      Available
+      {t('common.available', 'Available')}
     </span>
   ) : (
     <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
       <XCircle className="w-3 h-3" aria-hidden="true" />
-      Unavailable
+      {t('common.unavailable', 'Unavailable')}
     </span>
   );
 }

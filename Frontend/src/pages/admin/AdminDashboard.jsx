@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import {
   ShieldCheck,
@@ -20,10 +21,10 @@ import {
 } from 'recharts';
 import api, { getErrorMessage } from '../../services/api';
 import { BookingStatusBadge, AvailabilityBadge } from '../../components/StatusBadge';
-import { ROLE_LABELS } from '../../utils/constants';
-import { formatCurrency } from '../../utils/distance';
+import { formatCurrency, formatDate } from '../../utils/distance';
 
 export default function AdminDashboard() {
+  const { t, i18n } = useTranslation();
   const [overview, setOverview] = useState(null);
   const [users, setUsers] = useState([]);
   const [listings, setListings] = useState([]);
@@ -108,7 +109,7 @@ export default function AdminDashboard() {
   if (loading) {
     return (
       <div className="py-16 text-center text-sm text-slate-500">
-        Loading administrator analytics...
+        {t('common.loading')}
       </div>
     );
   }
@@ -121,20 +122,18 @@ export default function AdminDashboard() {
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-forest-900 flex items-center gap-2">
             <ShieldCheck className="w-7 h-7 text-forest-700" />
-            Administrator Control Center
+            {t('admin.title')}
           </h1>
-          <p className="text-sm text-slate-600 mt-0.5">
-            Platform-wide metrics, user governance, bookings, and reported listing review.
-          </p>
+          <p className="text-sm text-slate-600 mt-0.5">{t('admin.subtitle')}</p>
         </div>
 
         <div className="flex flex-wrap bg-white border border-earth-200 p-1 rounded-xl gap-1">
           {[
-            { id: 'overview', label: 'Overview' },
-            { id: 'users', label: `Users (${users.length})` },
-            { id: 'listings', label: `Listings (${listings.length})` },
-            { id: 'reported', label: `Reported (${reportedListings.length})` },
-            { id: 'bookings', label: `Bookings (${bookings.length})` },
+            { id: 'overview', label: t('nav.dashboard') },
+            { id: 'users', label: `${t('admin.usersTab')} (${users.length})` },
+            { id: 'listings', label: `${t('admin.listingsTab')} (${listings.length})` },
+            { id: 'reported', label: `! (${reportedListings.length})` },
+            { id: 'bookings', label: `${t('admin.bookingsTab')} (${bookings.length})` },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -157,63 +156,57 @@ export default function AdminDashboard() {
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <div className="bg-white rounded-2xl border border-earth-200 p-5 shadow-sm">
               <div className="text-xs font-semibold uppercase text-slate-500 flex justify-between">
-                Total Users <Users className="w-4 h-4 text-forest-700" />
+                {t('admin.totalUsers')} <Users className="w-4 h-4 text-forest-700" />
               </div>
               <div className="text-3xl font-extrabold text-forest-900 mt-2">
                 {overview.totalUsers}
-              </div>
-              <div className="text-xs text-slate-500 mt-1">
-                {overview.totalFarmers} Farmers · {overview.totalProviders} Providers
               </div>
             </div>
 
             <div className="bg-white rounded-2xl border border-earth-200 p-5 shadow-sm">
               <div className="text-xs font-semibold uppercase text-slate-500 flex justify-between">
-                Machinery <Tractor className="w-4 h-4 text-forest-700" />
+                {t('nav.machinery')} <Tractor className="w-4 h-4 text-forest-700" />
               </div>
               <div className="text-3xl font-extrabold text-forest-900 mt-2">
                 {overview.totalEquipment}
               </div>
               <div className="text-xs text-slate-500 mt-1">
-                {overview.totalLabour} Labour Teams
+                {overview.totalLabour} {t('nav.labour')}
               </div>
             </div>
 
             <div className="bg-white rounded-2xl border border-earth-200 p-5 shadow-sm">
               <div className="text-xs font-semibold uppercase text-slate-500 flex justify-between">
-                Facilities <Warehouse className="w-4 h-4 text-sky-600" />
+                {t('nav.facilities')} <Warehouse className="w-4 h-4 text-sky-600" />
               </div>
               <div className="text-3xl font-extrabold text-forest-900 mt-2">
                 {overview.totalFacilities}
               </div>
-              <div className="text-xs text-slate-500 mt-1">Post-harvest units</div>
             </div>
 
             <div className="bg-white rounded-2xl border border-earth-200 p-5 shadow-sm">
               <div className="text-xs font-semibold uppercase text-slate-500 flex justify-between">
-                Total Bookings <CalendarCheck className="w-4 h-4 text-harvest-600" />
+                {t('admin.totalBookings')} <CalendarCheck className="w-4 h-4 text-harvest-600" />
               </div>
               <div className="text-3xl font-extrabold text-forest-900 mt-2">
                 {overview.totalBookings}
               </div>
-              <div className="text-xs text-slate-500 mt-1">Across all modules</div>
             </div>
 
             <div className="bg-white rounded-2xl border border-earth-200 p-5 shadow-sm col-span-2 md:col-span-1">
               <div className="text-xs font-semibold uppercase text-slate-500 flex justify-between">
-                Reported <Flag className="w-4 h-4 text-rose-600" />
+                ! <Flag className="w-4 h-4 text-rose-600" />
               </div>
               <div className="text-3xl font-extrabold text-rose-700 mt-2">
                 {overview.reportedListingsCount ?? 0}
               </div>
-              <div className="text-xs text-slate-500 mt-1">Flagged listings</div>
             </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <div className="lg:col-span-6 bg-white rounded-2xl border border-earth-200 p-6 shadow-sm">
               <h2 className="text-base font-bold text-slate-900 mb-4">
-                Booking Status Breakdown
+                {t('admin.bookingsTab')}
               </h2>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
@@ -230,7 +223,7 @@ export default function AdminDashboard() {
 
             <div className="lg:col-span-6 bg-white rounded-2xl border border-earth-200 p-6 shadow-sm space-y-3">
               <h2 className="text-base font-bold text-slate-900">
-                Recent Platform Activity
+                {t('bookings.statusTimeline')}
               </h2>
               <div className="space-y-2.5 max-h-64 overflow-y-auto">
                 {(overview.recentBookings || []).map((b) => (
@@ -242,7 +235,7 @@ export default function AdminDashboard() {
                       <div className="font-bold text-slate-900">{b.serviceName}</div>
                       <div className="text-slate-500">
                         {b.farmerId?.name} → {b.providerId?.name} ·{' '}
-                        {formatCurrency(b.estimatedCost)}
+                        {formatCurrency(b.estimatedCost, i18n.language)}
                       </div>
                     </div>
                     <BookingStatusBadge status={b.status} />
@@ -259,11 +252,11 @@ export default function AdminDashboard() {
           <table className="w-full text-left text-sm">
             <thead className="bg-earth-50 border-b border-earth-200 text-xs uppercase text-slate-600">
               <tr>
-                <th className="p-4">Name</th>
-                <th className="p-4">Role</th>
-                <th className="p-4">Location</th>
-                <th className="p-4">Status</th>
-                <th className="p-4 text-right">Actions</th>
+                <th className="p-4">{t('auth.fullName')}</th>
+                <th className="p-4">{t('admin.usersTab')}</th>
+                <th className="p-4">{t('common.address')}</th>
+                <th className="p-4">{t('common.status')}</th>
+                <th className="p-4 text-right">{t('common.details')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-earth-200">
@@ -273,7 +266,7 @@ export default function AdminDashboard() {
                     <div className="font-semibold text-slate-900">{u.name}</div>
                     <div className="text-xs text-slate-500">{u.email}</div>
                   </td>
-                  <td className="p-4 text-xs font-medium">{ROLE_LABELS[u.role]}</td>
+                  <td className="p-4 text-xs font-medium">{t(`roles.${u.role}`, u.role)}</td>
                   <td className="p-4 text-xs text-slate-600">
                     {[u.village, u.district].filter(Boolean).join(', ') || '—'}
                   </td>
@@ -424,12 +417,12 @@ export default function AdminDashboard() {
           <table className="w-full text-left text-sm">
             <thead className="bg-earth-50 border-b border-earth-200 text-xs uppercase text-slate-600">
               <tr>
-                <th className="p-4">Service</th>
-                <th className="p-4">Farmer</th>
-                <th className="p-4">Provider</th>
-                <th className="p-4">Date</th>
-                <th className="p-4">Estimate</th>
-                <th className="p-4">Status</th>
+                <th className="p-4">{t('nav.services')}</th>
+                <th className="p-4">{t('bookings.farmerLabel')}</th>
+                <th className="p-4">{t('bookings.providerLabel')}</th>
+                <th className="p-4">{t('common.date')}</th>
+                <th className="p-4">{t('bookings.amountLabel')}</th>
+                <th className="p-4">{t('common.status')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-earth-200">
@@ -441,9 +434,9 @@ export default function AdminDashboard() {
                   </td>
                   <td className="p-4 text-xs text-slate-700">{b.farmerId?.name}</td>
                   <td className="p-4 text-xs text-slate-700">{b.providerId?.name}</td>
-                  <td className="p-4 text-xs text-slate-600">{b.bookingDate}</td>
+                  <td className="p-4 text-xs text-slate-600">{formatDate(b.bookingDate, i18n.language)}</td>
                   <td className="p-4 text-xs font-bold text-forest-900">
-                    {formatCurrency(b.estimatedCost)}
+                    {formatCurrency(b.estimatedCost, i18n.language)}
                   </td>
                   <td className="p-4">
                     <BookingStatusBadge status={b.status} />

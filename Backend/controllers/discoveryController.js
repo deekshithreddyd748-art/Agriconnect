@@ -182,7 +182,7 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
         pendingBookings,
         labourRequests: labourRequests.slice(0, 4),
         openLabourRequestsCount: labourRequests.filter((r) =>
-          ['Open', 'Partially Filled'].includes(r.status)
+          ['Open', 'Applications Received', 'Pending', 'Worker Accepted', 'Partially Filled'].includes(r.status)
         ).length,
         pendingApplicationsCount: pendingAppsCount,
         recentActivity: bookings.slice(0, 6),

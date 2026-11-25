@@ -1,48 +1,60 @@
 import express from 'express';
-import { body } from 'express-validator';
 import {
+  acceptLabourRequest,
   applyToLabourRequest,
   cancelLabourRequest,
   createLabourRequest,
+  getFarmerLabourBookings,
   getLabourRequestById,
   getLabourRequests,
   getMyApplications,
+  getRequestApplications,
+  getWorkerBookings,
   respondToApplication,
+  updateLabourBookingStatus,
+  updateLabourRequest,
   updateLabourRequestStatus,
 } from '../controllers/labourRequestController.js';
 import { authorize, protect } from '../middleware/auth.js';
 import { validateRequest } from '../middleware/validate.js';
+import { body } from 'express-validator';
 
 const router = express.Router();
 
 router.use(protect);
 
 router.get('/worker/my-applications', getMyApplications);
+router.get('/worker/bookings', authorize('labour_provider', 'admin'), getWorkerBookings);
+router.get('/farmer/bookings', authorize('farmer', 'admin'), getFarmerLabourBookings);
+router.patch('/bookings/:bookingId/status', updateLabourBookingStatus);
+
 router.get('/', getLabourRequests);
 router.get('/:id', getLabourRequestById);
+router.get('/:id/applications', authorize('farmer', 'admin'), getRequestApplications);
 
 router.post(
   '/',
   authorize('farmer', 'admin'),
   [
-    body('category').trim().notEmpty().withMessage('Labour category is required'),
+    body('category').trim().notEmpty().withMessage('Work type is required'),
     body('workersRequired')
       .isInt({ min: 1 })
-      .withMessage('Workers required must be a positive whole number'),
-    body('startDate').trim().notEmpty().withMessage('Start date is required'),
-    body('durationDays')
-      .isFloat({ gt: 0 })
-      .withMessage('Duration must be greater than 0'),
-    body('dailyWage')
-      .isFloat({ gt: 0 })
-      .withMessage('Daily wage must be greater than 0'),
+      .withMessage('Number of workers must be a positive whole number'),
+    body('startDate').trim().notEmpty().withMessage('Required date is required'),
   ],
   validateRequest,
   createLabourRequest
 );
 
+router.put('/:id', authorize('farmer', 'admin'), updateLabourRequest);
 router.patch('/:id/cancel', authorize('farmer', 'admin'), cancelLabourRequest);
 router.patch('/:id/status', authorize('farmer', 'admin'), updateLabourRequestStatus);
+
+router.post(
+  '/:id/accept',
+  authorize('labour_provider', 'admin'),
+  acceptLabourRequest
+);
 
 router.post(
   '/:id/apply',

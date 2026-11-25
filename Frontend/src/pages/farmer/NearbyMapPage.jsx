@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { MapPin, Layers } from 'lucide-react';
 import api from '../../services/api';
 import { useLocationContext } from '../../context/LocationContext';
@@ -8,6 +9,7 @@ import ServiceMap from '../../components/ServiceMap';
 import { formatDistanceLabel } from '../../utils/distance';
 
 export default function NearbyMapPage() {
+  const { t } = useTranslation();
   const { coords, hasCoords, radius, regionFilter } = useLocationContext();
   const [serviceType, setServiceType] = useState('all');
   const [items, setItems] = useState([]);
@@ -38,10 +40,10 @@ export default function NearbyMapPage() {
   ]);
 
   const filterTabs = [
-    { key: 'all', label: 'All Services' },
-    { key: 'equipment', label: 'Machinery (M)' },
-    { key: 'labour', label: 'Labour (L)' },
-    { key: 'facility', label: 'Facilities (F)' },
+    { key: 'all', label: t('marketplace.mapLayerAll') },
+    { key: 'equipment', label: t('marketplace.mapLayerEquipment') },
+    { key: 'labour', label: t('marketplace.mapLayerLabour') },
+    { key: 'facility', label: t('marketplace.mapLayerFacilities') },
   ];
 
   return (
@@ -50,11 +52,10 @@ export default function NearbyMapPage() {
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-forest-900 flex items-center gap-2">
             <MapPin className="w-7 h-7 text-forest-700" />
-            Nearby Agricultural Services Map
+            {t('marketplace.nearbyMapTitle')}
           </h1>
           <p className="text-sm text-slate-600 mt-0.5">
-            Explore nearby machinery owners, labour crews, and post-harvest hubs sorted
-            by Haversine distance.
+            {t('marketplace.nearbyMapSubtitle')}
           </p>
         </div>
 
@@ -92,15 +93,15 @@ export default function NearbyMapPage() {
           <div className="flex items-center justify-between pb-2 border-b border-earth-200">
             <h2 className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
               <Layers className="w-4 h-4 text-forest-700" />
-              Nearby Results ({items.length})
+              {t('marketplace.itemsOnMap', { count: items.length })}
             </h2>
           </div>
 
           {loading ? (
-            <p className="text-xs text-slate-500 py-6 text-center">Searching nearby...</p>
+            <p className="text-xs text-slate-500 py-6 text-center">{t('common.loading')}</p>
           ) : items.length === 0 ? (
             <p className="text-xs text-slate-500 py-6 text-center">
-              No active services found within {radius > 0 ? `${radius} km` : 'this area'}.
+              {t('common.noResults')}
             </p>
           ) : (
             items.map((item) => {
@@ -118,7 +119,9 @@ export default function NearbyMapPage() {
                   className="block p-3.5 rounded-xl border border-earth-200 hover:border-forest-500 hover:bg-earth-50 transition-colors space-y-1"
                 >
                   <div className="flex items-center justify-between text-[11px] font-semibold">
-                    <span className="uppercase text-fresh-600">{item.category}</span>
+                    <span className="uppercase text-fresh-600">
+                      {t(`categories.${item.serviceType === 'facility' ? 'facility' : item.serviceType}.${item.category}`, item.category)}
+                    </span>
                     <span className="text-forest-800">{formatDistanceLabel(item)}</span>
                   </div>
                   <div className="font-bold text-sm text-slate-900">

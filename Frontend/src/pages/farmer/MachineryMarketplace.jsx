@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Search, MapPin, List, Map as MapIcon, Tractor } from 'lucide-react';
 import api from '../../services/api';
 import { useLocationContext } from '../../context/LocationContext';
@@ -14,6 +15,7 @@ import {
 } from '../../utils/distance';
 
 export default function MachineryMarketplace() {
+  const { t, i18n } = useTranslation();
   const { coords, hasCoords, radius, regionFilter } = useLocationContext();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -59,10 +61,10 @@ export default function MachineryMarketplace() {
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-forest-900 flex items-center gap-2">
             <Tractor className="w-7 h-7 text-forest-700" />
-            Agricultural Machinery Marketplace
+            {t('marketplace.machineryTitle')}
           </h1>
           <p className="text-sm text-slate-600 mt-0.5">
-            Compare nearby tractors, harvesters, rotavators, and irrigation equipment.
+            {t('marketplace.machinerySubtitle')}
           </p>
         </div>
 
@@ -76,7 +78,7 @@ export default function MachineryMarketplace() {
                 : 'text-slate-600 hover:bg-earth-50'
             }`}
           >
-            <List className="w-4 h-4" /> List View
+            <List className="w-4 h-4" /> {t('marketplace.mapLayerAll').split(' ')[0]}
           </button>
           <button
             type="button"
@@ -87,7 +89,7 @@ export default function MachineryMarketplace() {
                 : 'text-slate-600 hover:bg-earth-50'
             }`}
           >
-            <MapIcon className="w-4 h-4" /> Map View
+            <MapIcon className="w-4 h-4" /> {t('nav.nearbyMap')}
           </button>
         </div>
       </div>
@@ -102,7 +104,7 @@ export default function MachineryMarketplace() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search tractor, village..."
+            placeholder={t('marketplace.searchPlaceholder')}
             className="w-full pl-9 pr-3 py-2 rounded-xl border border-earth-200 text-sm"
           />
         </div>
@@ -112,10 +114,10 @@ export default function MachineryMarketplace() {
           onChange={(e) => setCategory(e.target.value)}
           className="px-3 py-2 rounded-xl border border-earth-200 text-sm bg-white"
         >
-          <option value="All">All Categories</option>
+          <option value="All">{t('marketplace.allCategories')}</option>
           {EQUIPMENT_CATEGORIES.map((cat) => (
             <option key={cat} value={cat}>
-              {cat}
+              {t(`categories.equipment.${cat}`, cat)}
             </option>
           ))}
         </select>
@@ -124,7 +126,7 @@ export default function MachineryMarketplace() {
           type="text"
           value={district}
           onChange={(e) => setDistrict(e.target.value)}
-          placeholder="Filter by district (e.g. Pune)"
+          placeholder={t('worker.filterDistrictPlaceholder')}
           className="px-3 py-2 rounded-xl border border-earth-200 text-sm"
         />
 
@@ -133,7 +135,7 @@ export default function MachineryMarketplace() {
           min="0"
           value={maxPrice}
           onChange={(e) => setMaxPrice(e.target.value)}
-          placeholder="Max price (₹)"
+          placeholder={t('marketplace.maxPricePlaceholder')}
           className="px-3 py-2 rounded-xl border border-earth-200 text-sm"
         />
 
@@ -142,15 +144,15 @@ export default function MachineryMarketplace() {
           onChange={(e) => setAvailability(e.target.value)}
           className="px-3 py-2 rounded-xl border border-earth-200 text-sm bg-white"
         >
-          <option value="">All Availability</option>
-          <option value="true">Available Only</option>
-          <option value="false">Currently Unavailable</option>
+          <option value="">{t('marketplace.allAvailability')}</option>
+          <option value="true">{t('marketplace.availableOnly')}</option>
+          <option value="false">{t('common.unavailable')}</option>
         </select>
       </div>
 
       {loading ? (
         <div className="py-16 text-center text-sm text-slate-500">
-          Loading nearby machinery...
+          {t('common.loading')}
         </div>
       ) : viewMode === 'map' ? (
         <ServiceMap
@@ -162,12 +164,7 @@ export default function MachineryMarketplace() {
         />
       ) : items.length === 0 ? (
         <div className="bg-white rounded-2xl border border-earth-200 p-10 text-center space-y-2">
-          <p className="font-semibold text-slate-800">
-            No machinery matched your filters in this radius.
-          </p>
-          <p className="text-xs text-slate-500">
-            Try expanding the distance radius to 25 km or selecting &quot;Any distance&quot;.
-          </p>
+          <p className="font-semibold text-slate-800">{t('marketplace.noMachinery')}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -193,7 +190,7 @@ export default function MachineryMarketplace() {
 
                 <div className="p-5 space-y-2.5">
                   <div className="text-xs font-semibold uppercase tracking-wider text-fresh-600">
-                    {item.category}
+                    {t(`categories.equipment.${item.category}`, item.category)}
                   </div>
                   <h3 className="text-lg font-bold text-slate-900 leading-snug">
                     {item.name}
@@ -204,9 +201,9 @@ export default function MachineryMarketplace() {
 
                   <div className="pt-1 space-y-1 text-xs text-slate-600">
                     <div>
-                      Owner:{' '}
+                      {t('marketplace.ownerLabel')}:{' '}
                       <span className="font-semibold text-slate-800">
-                        {item.ownerId?.name || 'Local Owner'}
+                        {item.ownerId?.name || t('roles.equipment_owner')}
                       </span>
                     </div>
                     <div className="flex items-center gap-1 text-forest-700 font-semibold">
@@ -214,7 +211,7 @@ export default function MachineryMarketplace() {
                       <span>
                         {[item.location?.village, item.location?.district]
                           .filter(Boolean)
-                          .join(', ') || 'Location pending'}{' '}
+                          .join(', ') || t('common.locationUnavailable')}{' '}
                         · {formatDistanceLabel(item)}
                       </span>
                     </div>
@@ -225,7 +222,7 @@ export default function MachineryMarketplace() {
               <div className="px-5 py-4 bg-earth-50 border-t border-earth-200 flex items-center justify-between">
                 <div>
                   <span className="text-lg font-extrabold text-forest-900">
-                    {formatCurrency(item.price)}
+                    {formatCurrency(item.price, i18n.language)}
                   </span>
                   <span className="text-xs text-slate-500"> / {item.priceUnit}</span>
                 </div>
@@ -233,7 +230,7 @@ export default function MachineryMarketplace() {
                   to={`/machinery/${item._id}`}
                   className="px-4 py-2 rounded-xl bg-forest-700 hover:bg-forest-800 text-white text-xs font-semibold"
                 >
-                  {item.availability ? 'View & Book' : 'View Details'}
+                  {item.availability ? t('common.bookNow') : t('common.viewDetails')}
                 </Link>
               </div>
             </div>

@@ -45,6 +45,11 @@ const labourApplicationSchema = new mongoose.Schema(
       trim: true,
       default: '',
     },
+    numberOfWorkers: {
+      type: Number,
+      min: [1, 'At least 1 worker is required'],
+      default: 1,
+    },
     message: {
       type: String,
       trim: true,

@@ -1,3 +1,5 @@
+import i18n, { getIntlLocale } from '../i18n';
+
 const EARTH_RADIUS_KM = 6371;
 
 export function hasValidCoords(loc) {
@@ -34,12 +36,18 @@ export function calculateDistanceKm(from, to) {
 
 export function formatDistanceLabel(item) {
   if (!item?.locationAvailable && !hasValidCoords(item?.location)) {
-    return 'Location unavailable';
+    return i18n.t('common.locationUnavailable', 'Location unavailable');
   }
   if (item?.distanceKm !== null && item?.distanceKm !== undefined) {
-    return `${item.distanceKm} km away`;
+    const formatted = Number(item.distanceKm).toLocaleString(getIntlLocale(), {
+      maximumFractionDigits: 1,
+    });
+    return i18n.t('common.kmAway', {
+      distance: formatted,
+      defaultValue: `${formatted} km away`,
+    });
   }
-  return 'Set location for distance';
+  return i18n.t('common.setLocationForDistance', 'Set location for distance');
 }
 
 export function resolveImageUrl(path) {
@@ -48,12 +56,29 @@ export function resolveImageUrl(path) {
   if (path.startsWith('/uploads/')) {
     const apiBase = import.meta.env.VITE_API_URL;
     const derivedOrigin = apiBase ? apiBase.replace(/\/api\/?$/, '') : '';
-    const base = import.meta.env.VITE_ASSET_URL || derivedOrigin || 'http://localhost:5000';
+    const defaultOrigin = import.meta.env.DEV ? 'http://localhost:5000' : '';
+    const base = import.meta.env.VITE_ASSET_URL || derivedOrigin || defaultOrigin;
     return `${base}${path}`;
   }
   return path;
 }
 
-export function formatCurrency(amount) {
-  return `₹${Number(amount || 0).toLocaleString('en-IN')}`;
+export function formatCurrency(amount, lang) {
+  const num = Number(amount || 0);
+  return `₹${num.toLocaleString(getIntlLocale(lang))}`;
+}
+
+export function formatNumber(value, lang, options) {
+  const num = Number(value || 0);
+  return num.toLocaleString(getIntlLocale(lang), options);
+}
+
+export function formatDate(dateInput, lang, options) {
+  if (!dateInput) return '—';
+  const date = new Date(dateInput);
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleDateString(
+    getIntlLocale(lang),
+    options || { day: 'numeric', month: 'short', year: 'numeric' }
+  );
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, Search, MapPin, List, Map as MapIcon } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { Users, Search, MapPin, List, Map as MapIcon, PlusCircle } from 'lucide-react';
 import api from '../../services/api';
 import { useLocationContext } from '../../context/LocationContext';
 import LocationSelector from '../../components/LocationSelector';
@@ -10,6 +11,7 @@ import { LABOUR_CATEGORIES } from '../../utils/constants';
 import { formatCurrency, formatDistanceLabel } from '../../utils/distance';
 
 export default function LabourDiscoveryPage() {
+  const { t, i18n } = useTranslation();
   const { coords, hasCoords, radius, regionFilter } = useLocationContext();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -56,36 +58,45 @@ export default function LabourDiscoveryPage() {
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-forest-900 flex items-center gap-2">
             <Users className="w-7 h-7 text-harvest-600" />
-            Agricultural Labour Network
+            {t('marketplace.labourTitle')}
           </h1>
           <p className="text-sm text-slate-600 mt-0.5">
-            Find skilled harvesting, sowing, weeding, and transplantation crews nearby.
+            {t('marketplace.labourSubtitle')}
           </p>
         </div>
 
-        <div className="inline-flex rounded-xl border border-earth-200 bg-white p-1 self-start">
-          <button
-            type="button"
-            onClick={() => setViewMode('list')}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold ${
-              viewMode === 'list'
-                ? 'bg-forest-700 text-white'
-                : 'text-slate-600 hover:bg-earth-50'
-            }`}
+        <div className="flex flex-wrap items-center gap-2 self-start">
+          <Link
+            to="/farmer/request-labour"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-forest-700 text-white text-xs font-bold hover:bg-forest-800"
           >
-            <List className="w-4 h-4" /> List View
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewMode('map')}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold ${
-              viewMode === 'map'
-                ? 'bg-forest-700 text-white'
-                : 'text-slate-600 hover:bg-earth-50'
-            }`}
-          >
-            <MapIcon className="w-4 h-4" /> Map View
-          </button>
+            <PlusCircle className="w-4 h-4" />
+            {t('nav.requestLabour')}
+          </Link>
+          <div className="inline-flex rounded-xl border border-earth-200 bg-white p-1">
+            <button
+              type="button"
+              onClick={() => setViewMode('list')}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold ${
+                viewMode === 'list'
+                  ? 'bg-forest-700 text-white'
+                  : 'text-slate-600 hover:bg-earth-50'
+              }`}
+            >
+              <List className="w-4 h-4" /> {t('bookings.allFilter')}
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('map')}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold ${
+                viewMode === 'map'
+                  ? 'bg-forest-700 text-white'
+                  : 'text-slate-600 hover:bg-earth-50'
+              }`}
+            >
+              <MapIcon className="w-4 h-4" /> {t('nav.nearbyMap')}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -98,7 +109,7 @@ export default function LabourDiscoveryPage() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search skills, village..."
+            placeholder={t('marketplace.searchPlaceholder')}
             className="w-full pl-9 pr-3 py-2 rounded-xl border border-earth-200 text-sm"
           />
         </div>
@@ -107,10 +118,10 @@ export default function LabourDiscoveryPage() {
           onChange={(e) => setCategory(e.target.value)}
           className="px-3 py-2 rounded-xl border border-earth-200 text-sm bg-white"
         >
-          <option value="All">All Work Categories</option>
+          <option value="All">{t('worker.allCategories')}</option>
           {LABOUR_CATEGORIES.map((cat) => (
             <option key={cat} value={cat}>
-              {cat}
+              {t(`categories.labour.${cat}`, cat)}
             </option>
           ))}
         </select>
@@ -118,7 +129,7 @@ export default function LabourDiscoveryPage() {
           type="text"
           value={district}
           onChange={(e) => setDistrict(e.target.value)}
-          placeholder="Filter by district"
+          placeholder={t('worker.filterDistrictPlaceholder')}
           className="px-3 py-2 rounded-xl border border-earth-200 text-sm"
         />
         <input
@@ -126,7 +137,7 @@ export default function LabourDiscoveryPage() {
           min="1"
           value={minWorkers}
           onChange={(e) => setMinWorkers(e.target.value)}
-          placeholder="Min workers needed"
+          placeholder={t('labourRequest.workersLabel')}
           className="px-3 py-2 rounded-xl border border-earth-200 text-sm"
         />
         <input
@@ -134,14 +145,14 @@ export default function LabourDiscoveryPage() {
           min="0"
           value={maxPrice}
           onChange={(e) => setMaxPrice(e.target.value)}
-          placeholder="Max price / worker (₹)"
+          placeholder={t('marketplace.maxPricePlaceholder')}
           className="px-3 py-2 rounded-xl border border-earth-200 text-sm"
         />
       </div>
 
       {loading ? (
         <div className="py-16 text-center text-sm text-slate-500">
-          Loading nearby labour teams...
+          {t('common.loading')}
         </div>
       ) : viewMode === 'map' ? (
         <ServiceMap
@@ -153,7 +164,7 @@ export default function LabourDiscoveryPage() {
         />
       ) : items.length === 0 ? (
         <div className="bg-white rounded-2xl border border-earth-200 p-10 text-center text-sm text-slate-600">
-          No labour crews matched your filters in this radius.
+          {t('marketplace.noLabour')}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -165,12 +176,12 @@ export default function LabourDiscoveryPage() {
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between gap-2">
                   <span className="px-2.5 py-1 rounded-lg bg-harvest-100 text-harvest-700 text-xs font-bold">
-                    {item.category}
+                    {t(`categories.labour.${item.category}`, item.category)}
                   </span>
                   <AvailabilityBadge available={item.availability} />
                 </div>
                 <h3 className="text-lg font-bold text-slate-900">
-                  {item.title || `${item.category} Team`}
+                  {item.title || t(`categories.labour.${item.category}`, item.category)}
                 </h3>
                 <p className="text-xs text-slate-600 line-clamp-2">
                   {item.description}
@@ -182,22 +193,21 @@ export default function LabourDiscoveryPage() {
                         key={sk}
                         className="px-2 py-0.5 rounded-md bg-earth-100 text-slate-700 text-[11px] font-medium"
                       >
-                        {sk}
+                        {t(`categories.labour.${sk}`, sk)}
                       </span>
                     ))}
                   </div>
                 )}
                 <div className="text-xs text-slate-600 space-y-1 pt-1">
                   <div>
-                    Coordinator:{' '}
+                    {t('marketplace.ownerLabel')}:{' '}
                     <strong className="text-slate-800">
-                      {item.providerId?.name || 'Local Provider'}
+                      {item.providerId?.name || t('roles.labour_provider')}
                     </strong>
                     {item.experience ? ` · ${item.experience}` : ''}
                   </div>
-                  <div>
-                    Available Workers:{' '}
-                    <strong className="text-forest-800">{item.workersAvailable}</strong>
+                  <div className="text-forest-800 font-semibold">
+                    {t('marketplace.workersAvailable', { count: item.workersAvailable })}
                   </div>
                   <div className="flex items-center gap-1 text-forest-700 font-semibold">
                     <MapPin className="w-3.5 h-3.5 shrink-0" />
@@ -212,18 +222,15 @@ export default function LabourDiscoveryPage() {
               <div className="pt-3 border-t border-earth-200 flex items-center justify-between">
                 <div>
                   <span className="text-lg font-extrabold text-forest-900">
-                    {formatCurrency(item.pricePerWorker)}
+                    {formatCurrency(item.pricePerWorker, i18n.language)}
                   </span>
-                  <span className="text-xs text-slate-500">
-                    {' '}
-                    / worker / {item.priceUnit}
-                  </span>
+                  <span className="text-xs text-slate-500"> {t('common.perDay')}</span>
                 </div>
                 <Link
                   to={`/labour/${item._id}`}
                   className="px-4 py-2 rounded-xl bg-forest-700 hover:bg-forest-800 text-white text-xs font-semibold"
                 >
-                  Request Team
+                  {t('common.bookNow')}
                 </Link>
               </div>
             </div>

@@ -2,18 +2,30 @@ import mongoose from 'mongoose';
 
 export const LABOUR_REQUEST_CATEGORIES = [
   'Sowing / Planting',
-  'Harvesting',
+  'Sowing',
+  'Transplanting',
+  'Transplantation',
   'Weeding',
+  'Harvesting',
   'Pesticide Spraying',
+  'Spraying',
   'Tractor / Machinery Operator',
   'Irrigation Work',
+  'Irrigation',
+  'Land Preparation',
+  'Fertilizer Application',
   'General Farm Help',
+  'Other Agricultural Work',
   'Other',
 ];
 
 export const LABOUR_REQUEST_STATUSES = [
   'Open',
+  'Applications Received',
+  'Pending',
+  'Worker Accepted',
   'Partially Filled',
+  'Filled',
   'Fully Filled',
   'In Progress',
   'Completed',
@@ -53,23 +65,46 @@ const labourRequestSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    remainingVacancies: {
+      type: Number,
+      min: 0,
+    },
+    acceptedWorkerIds: {
+      type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+      default: [],
+    },
     startDate: {
       type: String,
       required: [true, 'Work start date is required'],
     },
     durationDays: {
       type: Number,
-      required: [true, 'Duration in days is required'],
+      default: 1,
       min: [0.5, 'Duration must be positive'],
     },
     dailyWage: {
       type: Number,
-      required: [true, 'Daily wage is required'],
-      min: [1, 'Daily wage must be a positive amount'],
+      default: 0,
+      min: [0, 'Daily wage cannot be negative'],
+    },
+    budget: {
+      type: Number,
+      default: null,
+      min: [0, 'Budget cannot be negative'],
+    },
+    farmSize: {
+      type: Number,
+      default: null,
+      min: [0, 'Farm size cannot be negative'],
+    },
+    farmSizeUnit: {
+      type: String,
+      enum: ['acres', 'hectares'],
+      default: 'acres',
     },
     estimatedTotal: {
       type: Number,
-      required: true,
+      default: 0,
       min: 0,
     },
     location: {
@@ -99,6 +134,13 @@ const labourRequestSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+labourRequestSchema.pre('save', function syncVacancies(next) {
+  if (this.remainingVacancies === undefined || this.remainingVacancies === null) {
+    this.remainingVacancies = Math.max(0, (this.workersRequired || 0) - (this.workersAccepted || 0));
+  }
+  next();
+});
 
 const LabourRequest = mongoose.model('LabourRequest', labourRequestSchema);
 export default LabourRequest;

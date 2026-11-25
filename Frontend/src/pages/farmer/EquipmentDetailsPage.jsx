@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import {
   ArrowLeft,
@@ -26,6 +27,7 @@ export default function EquipmentDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { t, i18n } = useTranslation();
   const { coords, hasCoords } = useLocationContext();
 
   const [item, setItem] = useState(null);
@@ -43,9 +45,7 @@ export default function EquipmentDetailsPage() {
       .get(`/equipment/${id}`, {
         params: hasCoords ? { lat: coords.lat, lng: coords.lng } : {},
       })
-      .then((res) => {
-        setItem(res.data.data);
-      })
+      .then((res) => setItem(res.data.data))
       .catch(() => setItem(null))
       .finally(() => setLoading(false));
   }, [id, coords?.lat, coords?.lng, hasCoords]);
@@ -60,14 +60,16 @@ export default function EquipmentDetailsPage() {
   }, [user, farmAddress]);
 
   if (loading) {
-    return <div className="py-16 text-center text-sm text-slate-500">Loading equipment...</div>;
+    return (
+      <div className="py-16 text-center text-sm text-slate-500">{t('common.loading')}</div>
+    );
   }
   if (!item) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-16 text-center space-y-3">
-        <p className="font-bold text-slate-800">Equipment listing not found.</p>
+        <p className="font-bold text-slate-800">{t('common.noResults')}</p>
         <Link to="/machinery" className="text-forest-700 font-semibold text-sm hover:underline">
-          Back to Marketplace
+          {t('marketplace.backToList')}
         </Link>
       </div>
     );
@@ -78,12 +80,12 @@ export default function EquipmentDetailsPage() {
   async function handleBook(e) {
     e.preventDefault();
     if (!user) {
-      toast.error('Please log in as a farmer to submit a booking request.');
+      toast.error(t('marketplace.loginToBook'));
       navigate('/login');
       return;
     }
     if (user.role !== 'farmer' && user.role !== 'admin') {
-      toast.error('Only farmer accounts can request equipment bookings.');
+      toast.error(t('marketplace.loginToBook'));
       return;
     }
 
@@ -104,23 +106,27 @@ export default function EquipmentDetailsPage() {
         },
         notes,
       });
-      toast.success('Booking request sent to equipment owner!');
+      toast.success(
+        t('marketplace.bookingCreated', {
+          code: res.data.data?.bookingCode || res.data.data?._id,
+        })
+      );
       navigate(`/bookings/${res.data.data._id}`);
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Could not submit booking.'));
+      toast.error(getErrorMessage(err, t('marketplace.bookingFailed')));
     } finally {
       setSubmitting(false);
     }
   }
 
   async function handleReport() {
-    const reason = window.prompt('Describe why you are reporting this listing:');
+    const reason = window.prompt(t('bookings.notesHeading'));
     if (!reason || !reason.trim()) return;
     try {
       await api.post(`/discovery/report/equipment/${item._id}`, { reason });
-      toast.success('Listing flagged for admin review.');
+      toast.success(t('common.saveSuccess'));
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Could not submit report.'));
+      toast.error(getErrorMessage(err, t('common.errorGeneric')));
     }
   }
 
@@ -131,7 +137,7 @@ export default function EquipmentDetailsPage() {
           to="/machinery"
           className="inline-flex items-center gap-1.5 text-sm font-semibold text-forest-700 hover:underline"
         >
-          <ArrowLeft className="w-4 h-4" /> Back to Machinery Marketplace
+          <ArrowLeft className="w-4 h-4" /> {t('marketplace.backToList')}
         </Link>
         {user && (
           <button
@@ -139,7 +145,7 @@ export default function EquipmentDetailsPage() {
             onClick={handleReport}
             className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-rose-600"
           >
-            <Flag className="w-3.5 h-3.5" /> Report Listing
+            <Flag className="w-3.5 h-3.5" /> !
           </button>
         )}
       </div>
@@ -158,7 +164,7 @@ export default function EquipmentDetailsPage() {
             <div className="p-6 space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-xs font-bold uppercase tracking-wider text-fresh-600">
-                  {item.category}
+                  {t(`categories.equipment.${item.category}`, item.category)}
                 </span>
                 <AvailabilityBadge available={item.availability} />
               </div>
@@ -167,23 +173,21 @@ export default function EquipmentDetailsPage() {
                 {item.name}
               </h1>
 
-              <p className="text-slate-600 text-sm leading-relaxed">
-                {item.description}
-              </p>
+              <p className="text-slate-600 text-sm leading-relaxed">{item.description}</p>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2">
                 <div className="p-3 rounded-xl bg-earth-50 border border-earth-200">
-                  <div className="text-[11px] text-slate-500">Rental Rate</div>
+                  <div className="text-[11px] text-slate-500">{t('provider.rateLabel')}</div>
                   <div className="font-bold text-forest-900">
-                    {formatCurrency(item.price)} / {item.priceUnit}
+                    {formatCurrency(item.price, i18n.language)} / {item.priceUnit}
                   </div>
                 </div>
                 <div className="p-3 rounded-xl bg-earth-50 border border-earth-200">
-                  <div className="text-[11px] text-slate-500">Service Radius</div>
+                  <div className="text-[11px] text-slate-500">{t('gps.radiusLabel')}</div>
                   <div className="font-bold text-slate-800">{item.serviceRadius} km</div>
                 </div>
                 <div className="p-3 rounded-xl bg-earth-50 border border-earth-200">
-                  <div className="text-[11px] text-slate-500">Distance</div>
+                  <div className="text-[11px] text-slate-500">{t('nav.nearbyMap')}</div>
                   <div className="font-bold text-forest-700">
                     {formatDistanceLabel(item)}
                   </div>
@@ -196,13 +200,19 @@ export default function EquipmentDetailsPage() {
                   item.specifications.year) && (
                   <div className="pt-2 border-t border-earth-200 text-xs text-slate-600 flex flex-wrap gap-4">
                     {item.specifications.brand && (
-                      <span>Brand: <strong>{item.specifications.brand}</strong></span>
+                      <span>
+                        <strong>{item.specifications.brand}</strong>
+                      </span>
                     )}
                     {item.specifications.horsepower && (
-                      <span>Power: <strong>{item.specifications.horsepower}</strong></span>
+                      <span>
+                        <strong>{item.specifications.horsepower}</strong>
+                      </span>
                     )}
                     {item.specifications.year && (
-                      <span>Year: <strong>{item.specifications.year}</strong></span>
+                      <span>
+                        <strong>{item.specifications.year}</strong>
+                      </span>
                     )}
                   </div>
                 )}
@@ -210,7 +220,7 @@ export default function EquipmentDetailsPage() {
               <div className="pt-3 border-t border-earth-200 flex flex-wrap items-center justify-between gap-3 text-sm">
                 <div>
                   <div className="font-semibold text-slate-900">
-                    Owner: {item.ownerId?.name}
+                    {t('marketplace.ownerLabel')}: {item.ownerId?.name}
                   </div>
                   <div className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
                     <MapPin className="w-3.5 h-3.5" />
@@ -241,7 +251,7 @@ export default function EquipmentDetailsPage() {
           ) : (
             <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-sm text-amber-900 flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
-              Exact map coordinates are currently unavailable for this listing.
+              {t('common.locationUnavailable')}
             </div>
           )}
         </div>
@@ -250,22 +260,18 @@ export default function EquipmentDetailsPage() {
           <div className="bg-white rounded-3xl border border-earth-200 p-6 shadow-sm sticky top-24 space-y-5">
             <h2 className="text-xl font-bold text-forest-900 flex items-center gap-2">
               <Calendar className="w-5 h-5 text-forest-700" />
-              Request Equipment Booking
+              {t('marketplace.bookEquipmentTitle')}
             </h2>
 
             {!item.availability ? (
               <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-sm text-rose-800 space-y-1">
-                <div className="font-bold">Currently Unavailable</div>
-                <p className="text-xs">
-                  This equipment is marked as unavailable by its owner. Booking
-                  requests are disabled until availability is restored.
-                </p>
+                <div className="font-bold">{t('common.unavailable')}</div>
               </div>
             ) : (
               <form onSubmit={handleBook} className="space-y-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Required Date *
+                    {t('marketplace.startDate')} *
                   </label>
                   <input
                     type="date"
@@ -278,7 +284,7 @@ export default function EquipmentDetailsPage() {
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Duration (Number of {item.priceUnit}s) *
+                    {t('marketplace.quantityDays')} ({item.priceUnit}) *
                   </label>
                   <input
                     type="number"
@@ -292,42 +298,42 @@ export default function EquipmentDetailsPage() {
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Farming Location / Plot Address *
+                    {t('common.address')} *
                   </label>
                   <input
                     type="text"
                     required
                     value={farmAddress}
                     onChange={(e) => setFarmAddress(e.target.value)}
-                    placeholder="Village, Survey No. or landmark"
                     className="w-full px-3.5 py-2.5 rounded-xl border border-earth-200 text-sm"
                   />
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Additional Requirements
+                    {t('marketplace.notesLabel')}
                   </label>
                   <textarea
                     rows={3}
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Crop type, soil condition, or operator preference..."
+                    placeholder={t('marketplace.notesPlaceholder')}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-earth-200 text-sm"
                   />
                 </div>
 
                 <div className="p-4 rounded-2xl bg-forest-50 border border-forest-200 space-y-1.5">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-forest-800 font-medium">Estimated Cost</span>
+                    <span className="text-forest-800 font-medium">
+                      {t('marketplace.bookingTotal')}
+                    </span>
                     <span className="text-xl font-extrabold text-forest-900">
-                      {formatCurrency(estimatedCost)}
+                      {formatCurrency(estimatedCost, i18n.language)}
                     </span>
                   </div>
-                  <p className="text-[11px] text-forest-700 flex items-start gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                    No online payment is charged now. Settle directly with the owner
-                    via Cash or UPI after service delivery.
+                  <p className="text-[11px] text-forest-700 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                    {t('marketplace.loginToBook')}
                   </p>
                 </div>
 
@@ -336,7 +342,9 @@ export default function EquipmentDetailsPage() {
                   disabled={submitting}
                   className="w-full py-3 rounded-xl bg-forest-700 hover:bg-forest-800 text-white font-semibold text-sm transition-colors disabled:opacity-60"
                 >
-                  {submitting ? 'Submitting Request...' : 'Submit Booking Request'}
+                  {submitting
+                    ? t('marketplace.submittingBooking')
+                    : t('marketplace.confirmBookingBtn')}
                 </button>
               </form>
             )}

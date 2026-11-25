@@ -52,7 +52,7 @@ export default function LocationSelector({ showRadius = true }) {
           </div>
           <div>
             <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              GPS Hyperlocal Discovery
+              {t('gps.headerLabel')}
             </div>
             {detecting ? (
               <div className="text-sm font-semibold text-forest-800">
@@ -76,7 +76,7 @@ export default function LocationSelector({ showRadius = true }) {
               <div className="text-sm font-semibold text-slate-800">
                 {regionFilter.village}, {regionFilter.district} ({regionFilter.state}){' '}
                 <span className="text-xs font-normal text-slate-500">
-                  — Approximate region filter
+                  — {t('gps.approxFilterTag')}
                 </span>
               </div>
             ) : (

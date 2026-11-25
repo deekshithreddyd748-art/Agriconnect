@@ -93,6 +93,11 @@ const userSchema = new mongoose.Schema(
       min: 0,
       default: null,
     },
+    farmSizeUnit: {
+      type: String,
+      enum: ['acres', 'hectares'],
+      default: 'acres',
+    },
     skills: {
       type: [String],
       default: [],

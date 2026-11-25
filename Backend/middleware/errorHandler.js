@@ -1,7 +1,9 @@
 export class AppError extends Error {
-  constructor(message, statusCode = 500) {
+  constructor(message, statusCode = 500, code = undefined, meta = undefined) {
     super(message);
     this.statusCode = statusCode;
+    this.errorCode = code;
+    this.meta = meta;
     this.isOperational = true;
   }
 }
@@ -19,6 +21,7 @@ export function notFound(req, _res, next) {
 export function errorHandler(err, _req, res, _next) {
   let statusCode = err.statusCode || 500;
   let message = err.message || 'Internal Server Error';
+  const code = err.errorCode;
 
   if (err.name === 'CastError') {
     statusCode = 400;
@@ -43,6 +46,8 @@ export function errorHandler(err, _req, res, _next) {
   res.status(statusCode).json({
     success: false,
     message,
+    ...(code && { code }),
+    ...(err.meta && typeof err.meta === 'object' ? err.meta : {}),
     ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
   });
 }

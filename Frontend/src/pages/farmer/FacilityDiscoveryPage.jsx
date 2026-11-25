@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Warehouse, Search, MapPin, List, Map as MapIcon, Clock } from 'lucide-react';
 import api from '../../services/api';
 import { useLocationContext } from '../../context/LocationContext';
@@ -14,6 +15,7 @@ import {
 } from '../../utils/distance';
 
 export default function FacilityDiscoveryPage() {
+  const { t, i18n } = useTranslation();
   const { coords, hasCoords, radius, regionFilter } = useLocationContext();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -57,10 +59,10 @@ export default function FacilityDiscoveryPage() {
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-forest-900 flex items-center gap-2">
             <Warehouse className="w-7 h-7 text-sky-700" />
-            Post-Harvest Facility Network
+            {t('marketplace.facilitiesTitle')}
           </h1>
           <p className="text-sm text-slate-600 mt-0.5">
-            Reserve cold storage, scientific warehouses, grain dryers, and mills nearby.
+            {t('marketplace.facilitiesSubtitle')}
           </p>
         </div>
 
@@ -74,7 +76,7 @@ export default function FacilityDiscoveryPage() {
                 : 'text-slate-600 hover:bg-earth-50'
             }`}
           >
-            <List className="w-4 h-4" /> List View
+            <List className="w-4 h-4" /> {t('bookings.allFilter')}
           </button>
           <button
             type="button"
@@ -85,7 +87,7 @@ export default function FacilityDiscoveryPage() {
                 : 'text-slate-600 hover:bg-earth-50'
             }`}
           >
-            <MapIcon className="w-4 h-4" /> Map View
+            <MapIcon className="w-4 h-4" /> {t('nav.nearbyMap')}
           </button>
         </div>
       </div>
@@ -99,7 +101,7 @@ export default function FacilityDiscoveryPage() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search cold storage, grain mill..."
+            placeholder={t('marketplace.searchPlaceholder')}
             className="w-full pl-9 pr-3 py-2 rounded-xl border border-earth-200 text-sm"
           />
         </div>
@@ -108,10 +110,10 @@ export default function FacilityDiscoveryPage() {
           onChange={(e) => setCategory(e.target.value)}
           className="px-3 py-2 rounded-xl border border-earth-200 text-sm bg-white"
         >
-          <option value="All">All Facility Categories</option>
+          <option value="All">{t('marketplace.allCategories')}</option>
           {FACILITY_CATEGORIES.map((cat) => (
             <option key={cat} value={cat}>
-              {cat}
+              {t(`categories.facility.${cat}`, cat)}
             </option>
           ))}
         </select>
@@ -119,7 +121,7 @@ export default function FacilityDiscoveryPage() {
           type="text"
           value={district}
           onChange={(e) => setDistrict(e.target.value)}
-          placeholder="Filter by district"
+          placeholder={t('worker.filterDistrictPlaceholder')}
           className="px-3 py-2 rounded-xl border border-earth-200 text-sm"
         />
         <input
@@ -127,14 +129,14 @@ export default function FacilityDiscoveryPage() {
           min="0"
           value={minCapacity}
           onChange={(e) => setMinCapacity(e.target.value)}
-          placeholder="Min available capacity (tons)"
+          placeholder={t('marketplace.capacityLabel')}
           className="px-3 py-2 rounded-xl border border-earth-200 text-sm"
         />
       </div>
 
       {loading ? (
         <div className="py-16 text-center text-sm text-slate-500">
-          Loading nearby facilities...
+          {t('common.loading')}
         </div>
       ) : viewMode === 'map' ? (
         <ServiceMap
@@ -146,7 +148,7 @@ export default function FacilityDiscoveryPage() {
         />
       ) : items.length === 0 ? (
         <div className="bg-white rounded-2xl border border-earth-200 p-10 text-center text-sm text-slate-600">
-          No post-harvest facilities matched your filters.
+          {t('marketplace.noFacilities')}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -172,7 +174,7 @@ export default function FacilityDiscoveryPage() {
 
                 <div className="p-5 space-y-2.5">
                   <div className="text-xs font-semibold uppercase tracking-wider text-sky-700">
-                    {item.category}
+                    {t(`categories.facility.${item.category}`, item.category)}
                   </div>
                   <h3 className="text-lg font-bold text-slate-900">{item.name}</h3>
                   <p className="text-xs text-slate-600 line-clamp-2">
@@ -181,9 +183,9 @@ export default function FacilityDiscoveryPage() {
 
                   <div className="text-xs text-slate-600 space-y-1 pt-1">
                     <div>
-                      Available Capacity:{' '}
+                      {t('marketplace.capacityLabel')}:{' '}
                       <strong className="text-forest-900">
-                        {item.availableCapacity} / {item.capacity} {item.capacityUnit}
+                        {item.availableCapacity} / {item.capacity} {t('marketplace.unitsTons')}
                       </strong>
                     </div>
                     <div className="flex items-center gap-1">
@@ -204,7 +206,7 @@ export default function FacilityDiscoveryPage() {
               <div className="px-5 py-4 bg-earth-50 border-t border-earth-200 flex items-center justify-between">
                 <div>
                   <span className="text-lg font-extrabold text-forest-900">
-                    {formatCurrency(item.price)}
+                    {formatCurrency(item.price, i18n.language)}
                   </span>
                   <span className="text-xs text-slate-500"> {item.priceUnit}</span>
                 </div>
@@ -212,7 +214,7 @@ export default function FacilityDiscoveryPage() {
                   to={`/facilities/${item._id}`}
                   className="px-4 py-2 rounded-xl bg-forest-700 hover:bg-forest-800 text-white text-xs font-semibold"
                 >
-                  Reserve Space
+                  {t('common.bookNow')}
                 </Link>
               </div>
             </div>

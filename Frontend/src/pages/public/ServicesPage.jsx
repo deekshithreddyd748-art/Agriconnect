@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Tractor, Users, Warehouse, MapPin, ArrowRight } from 'lucide-react';
 import {
   EQUIPMENT_CATEGORIES,
@@ -7,23 +8,25 @@ import {
 } from '../../utils/constants';
 
 export default function ServicesPage() {
+  const { t } = useTranslation();
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-10">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold text-forest-900">
-            AgriConnect Service Directory
+          <span className="text-xs font-bold uppercase tracking-wider text-fresh-600">
+            {t('servicesPage.eyebrow')}
+          </span>
+          <h1 className="text-3xl font-extrabold text-forest-900 mt-1">
+            {t('servicesPage.title')}
           </h1>
-          <p className="text-slate-600 mt-1">
-            Explore hyperlocal agricultural machinery, skilled labour squads, and
-            post-harvest infrastructure.
-          </p>
+          <p className="text-slate-600 mt-1">{t('servicesPage.subtitle')}</p>
         </div>
         <Link
           to="/nearby-map"
           className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-forest-700 text-white text-sm font-semibold hover:bg-forest-800 w-fit"
         >
-          <MapPin className="w-4 h-4" /> View All on Nearby Map
+          <MapPin className="w-4 h-4" /> {t('footer.mapLink')}
         </Link>
       </div>
 
@@ -34,10 +37,10 @@ export default function ServicesPage() {
               <Tractor className="w-6 h-6" />
             </div>
             <h2 className="text-xl font-bold text-slate-900">
-              Agricultural Machinery
+              {t('landing.servicesSection.machineryTitle')}
             </h2>
             <p className="text-sm text-slate-600 mt-1 mb-4">
-              10 equipment categories ready for hourly, daily, or per-acre booking.
+              {t('landing.servicesSection.machineryDesc')}
             </p>
             <div className="flex flex-wrap gap-1.5">
               {EQUIPMENT_CATEGORIES.map((cat) => (
@@ -45,7 +48,7 @@ export default function ServicesPage() {
                   key={cat}
                   className="px-2.5 py-1 rounded-lg bg-earth-100 text-slate-700 text-xs font-medium"
                 >
-                  {cat}
+                  {t(`categories.equipment.${cat}`, cat)}
                 </span>
               ))}
             </div>
@@ -54,7 +57,7 @@ export default function ServicesPage() {
             to="/machinery"
             className="mt-6 inline-flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-forest-700 text-white text-sm font-semibold hover:bg-forest-800"
           >
-            Open Machinery Marketplace <ArrowRight className="w-4 h-4" />
+            {t('landing.findEquipment')} <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
 
@@ -64,10 +67,10 @@ export default function ServicesPage() {
               <Users className="w-6 h-6" />
             </div>
             <h2 className="text-xl font-bold text-slate-900">
-              Agricultural Labour Network
+              {t('landing.servicesSection.labourTitle')}
             </h2>
             <p className="text-sm text-slate-600 mt-1 mb-4">
-              Verified farm crews across 7 specialized agricultural operations.
+              {t('landing.servicesSection.labourDesc')}
             </p>
             <div className="flex flex-wrap gap-1.5">
               {LABOUR_CATEGORIES.map((cat) => (
@@ -75,7 +78,7 @@ export default function ServicesPage() {
                   key={cat}
                   className="px-2.5 py-1 rounded-lg bg-earth-100 text-slate-700 text-xs font-medium"
                 >
-                  {cat}
+                  {t(`categories.labour.${cat}`, cat)}
                 </span>
               ))}
             </div>
@@ -84,7 +87,7 @@ export default function ServicesPage() {
             to="/labour"
             className="mt-6 inline-flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-forest-700 text-white text-sm font-semibold hover:bg-forest-800"
           >
-            Browse Labour Teams <ArrowRight className="w-4 h-4" />
+            {t('landing.findLabour')} <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
 
@@ -94,10 +97,10 @@ export default function ServicesPage() {
               <Warehouse className="w-6 h-6" />
             </div>
             <h2 className="text-xl font-bold text-slate-900">
-              Post-Harvest Facilities
+              {t('landing.servicesSection.facilitiesTitle')}
             </h2>
             <p className="text-sm text-slate-600 mt-1 mb-4">
-              Storage, drying, milling, grading, and packaging infrastructure.
+              {t('landing.servicesSection.facilitiesDesc')}
             </p>
             <div className="flex flex-wrap gap-1.5">
               {FACILITY_CATEGORIES.map((cat) => (
@@ -105,7 +108,7 @@ export default function ServicesPage() {
                   key={cat}
                   className="px-2.5 py-1 rounded-lg bg-earth-100 text-slate-700 text-xs font-medium"
                 >
-                  {cat}
+                  {t(`categories.facility.${cat}`, cat)}
                 </span>
               ))}
             </div>
@@ -114,7 +117,7 @@ export default function ServicesPage() {
             to="/facilities"
             className="mt-6 inline-flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-forest-700 text-white text-sm font-semibold hover:bg-forest-800"
           >
-            Explore Facilities <ArrowRight className="w-4 h-4" />
+            {t('landing.exploreFacilities')} <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
       </div>

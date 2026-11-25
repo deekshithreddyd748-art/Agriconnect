@@ -18,6 +18,19 @@ export const SUPPORTED_LANGUAGES = [
   { code: 'mr', nativeName: 'मराठी' },
 ];
 
+const LOCALE_INTL_MAP = {
+  en: 'en-IN',
+  kn: 'kn-IN',
+  hi: 'hi-IN',
+  te: 'te-IN',
+  ta: 'ta-IN',
+  mr: 'mr-IN',
+};
+
+export function getIntlLocale(lang) {
+  return LOCALE_INTL_MAP[lang] || LOCALE_INTL_MAP[i18n.language] || 'en-IN';
+}
+
 const savedLang =
   typeof window !== 'undefined' ? localStorage.getItem(LANG_STORAGE_KEY) || 'en' : 'en';
 
@@ -32,10 +45,20 @@ i18n.use(initReactI18next).init({
   },
   lng: SUPPORTED_LANGUAGES.some((l) => l.code === savedLang) ? savedLang : 'en',
   fallbackLng: 'en',
+  saveMissing: import.meta.env.DEV,
+  missingKeyHandler: (lngs, _ns, key) => {
+    if (import.meta.env.DEV) {
+      console.warn(`[i18n] Missing translation key "${key}" for language(s):`, lngs);
+    }
+  },
   interpolation: {
     escapeValue: false,
   },
 });
+
+if (typeof document !== 'undefined') {
+  document.documentElement.lang = i18n.language || 'en';
+}
 
 export function setAppLanguage(code) {
   i18n.changeLanguage(code);

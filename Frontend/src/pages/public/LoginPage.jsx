@@ -1,24 +1,35 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
-import { LogIn, Sprout, KeyRound, Phone, ShieldCheck, ArrowRight } from 'lucide-react';
+import {
+  LogIn,
+  Sprout,
+  KeyRound,
+  Phone,
+  ShieldCheck,
+  ArrowRight,
+  AlertTriangle,
+  Clock,
+  Edit3,
+  PlayCircle,
+} from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getErrorMessage } from '../../services/api';
 import { PROVIDER_ROLES } from '../../utils/constants';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
 
 const DEMO_ACCOUNTS = [
-  { label: 'Farmer (Rajesh Patil)', email: 'farmer@agriconnect.in', pass: 'Demo@123' },
-  { label: 'Equipment Owner', email: 'owner@agriconnect.in', pass: 'Demo@123' },
-  { label: 'Labour Provider', email: 'labour@agriconnect.in', pass: 'Demo@123' },
-  { label: 'Facility Owner', email: 'facility@agriconnect.in', pass: 'Demo@123' },
-  { label: 'Administrator', email: 'admin@agriconnect.in', pass: 'Admin@123' },
+  { roleKey: 'roles.farmer', email: 'farmer@agriconnect.in', pass: 'Demo@123' },
+  { roleKey: 'roles.equipment_owner', email: 'owner@agriconnect.in', pass: 'Demo@123' },
+  { roleKey: 'roles.labour_provider', email: 'labour@agriconnect.in', pass: 'Demo@123' },
+  { roleKey: 'roles.facility_operator', email: 'facility@agriconnect.in', pass: 'Demo@123' },
+  { roleKey: 'roles.admin', email: 'admin@agriconnect.in', pass: 'Admin@123' },
 ];
 
 export default function LoginPage() {
-  const { login, sendOtp, verifyOtp } = useAuth();
+  const { login, getOtpStatus, sendOtp, verifyOtp } = useAuth();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
@@ -29,7 +40,8 @@ export default function LoginPage() {
   const [mobileNumber, setMobileNumber] = useState('');
   const [otpSent, setOtpSent] = useState(false);
   const [otp, setOtp] = useState('');
-  const [mockOtpHint, setMockOtpHint] = useState('');
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
+  const [smsNotConfigured, setSmsNotConfigured] = useState(false);
 
   const {
     register,
@@ -37,6 +49,24 @@ export default function LoginPage() {
     setValue,
     formState: { errors },
   } = useForm();
+
+  useEffect(() => {
+    getOtpStatus()
+      .then((info) => {
+        if (info && info.configured === false) {
+          setSmsNotConfigured(true);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (cooldownSeconds <= 0) return undefined;
+    const id = setInterval(() => {
+      setCooldownSeconds((prev) => (prev > 1 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [cooldownSeconds]);
 
   function redirectByRole(user) {
     const from = location.state?.from?.pathname;
@@ -52,34 +82,42 @@ export default function LoginPage() {
     setSubmitting(true);
     try {
       const loggedInUser = await login(data.email, data.password);
-      toast.success(`Welcome back, ${loggedInUser.name}!`);
+      toast.success(t('auth.welcomeBack', { name: loggedInUser.name }));
       redirectByRole(loggedInUser);
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Login failed.'));
+      toast.error(getErrorMessage(err, t('auth.loginFailed')));
     } finally {
       setSubmitting(false);
     }
   }
 
   async function handleSendOtp(e) {
-    e.preventDefault();
+    if (e) e.preventDefault();
     const digits = mobileNumber.replace(/\D/g, '');
     if (!/^[6-9]\d{9}$/.test(digits)) {
       toast.error(t('auth.invalidMobile'));
       return;
     }
     setSubmitting(true);
+    setSmsNotConfigured(false);
     try {
       const res = await sendOtp(digits);
       setOtpSent(true);
-      setMockOtpHint(res.demoOtpMode ? res.mockOtp : '');
-      toast.success(
-        res.demoOtpMode
-          ? t('auth.demoOtpNotice', { otp: res.mockOtp })
-          : 'OTP sent to your mobile.'
-      );
+      setCooldownSeconds(res.cooldownSeconds || 60);
+      toast.success(t('auth.otpSentBanner', { mobile: digits }));
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Could not send OTP.'));
+      const code = err?.response?.data?.code;
+      const retryAfter = err?.response?.data?.retryAfterSeconds;
+      if (code === 'SMS_NOT_CONFIGURED') {
+        setSmsNotConfigured(true);
+        toast.error(t('auth.smsPendingTitle'));
+      } else if (code === 'OTP_COOLDOWN' && retryAfter) {
+        setCooldownSeconds(retryAfter);
+        setOtpSent(true);
+        toast.error(t('auth.resendCountdown', { seconds: retryAfter }));
+      } else {
+        toast.error(getErrorMessage(err, t('auth.otpFailed')));
+      }
     } finally {
       setSubmitting(false);
     }
@@ -96,14 +134,14 @@ export default function LoginPage() {
     try {
       const res = await verifyOtp(digits, otp.trim());
       if (res.isNewUser) {
-        toast('New mobile number verified! Complete registration to create your profile.');
+        toast.success(t('auth.newVerifiedPrompt'));
         navigate('/register');
         return;
       }
-      toast.success(`Welcome back, ${res.user.name}!`);
+      toast.success(t('auth.welcomeBack', { name: res.user.name }));
       redirectByRole(res.user);
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Invalid OTP.'));
+      toast.error(getErrorMessage(err, t('auth.otpVerifyFailed')));
     } finally {
       setSubmitting(false);
     }
@@ -135,7 +173,6 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Auth Mode Tabs */}
           <div className="grid grid-cols-2 gap-1.5 bg-earth-100 p-1 rounded-2xl mb-6">
             <button
               type="button"
@@ -164,6 +201,38 @@ export default function LoginPage() {
           {mode === 'otp' ? (
             !otpSent ? (
               <form onSubmit={handleSendOtp} className="space-y-4">
+                {smsNotConfigured && (
+                  <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 space-y-2.5">
+                    <div className="flex items-start gap-2 text-amber-900">
+                      <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                      <div>
+                        <div className="font-bold text-xs sm:text-sm">
+                          {t('auth.smsPendingTitle')}
+                        </div>
+                        <p className="text-xs text-amber-800 mt-0.5 leading-relaxed">
+                          {t('auth.smsPendingDesc')}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setMode('email')}
+                        className="px-3 min-h-[36px] rounded-xl bg-forest-700 text-white text-xs font-bold"
+                      >
+                        {t('auth.useEmailLogin')}
+                      </button>
+                      <Link
+                        to="/labour-demo"
+                        className="px-3 min-h-[36px] inline-flex items-center gap-1 rounded-xl bg-white border border-amber-300 text-amber-900 text-xs font-bold"
+                      >
+                        <PlayCircle className="w-3.5 h-3.5" />
+                        {t('auth.tryDemoInstead')}
+                      </Link>
+                    </div>
+                  </div>
+                )}
+
                 <div>
                   <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-1.5">
                     <Phone className="w-4 h-4 text-forest-700" />
@@ -184,10 +253,6 @@ export default function LoginPage() {
                       className="flex-1 min-h-[48px] px-3.5 rounded-xl border border-earth-200 text-base font-semibold"
                     />
                   </div>
-                  <p className="text-[11px] text-slate-500 mt-1.5">
-                    Demo farmer mobile: <strong>9823011223</strong> · Demo labour mobile:{' '}
-                    <strong>9890177889</strong>
-                  </p>
                 </div>
 
                 <button
@@ -201,11 +266,9 @@ export default function LoginPage() {
               </form>
             ) : (
               <form onSubmit={handleVerifyOtp} className="space-y-4">
-                {mockOtpHint && (
-                  <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-xs sm:text-sm text-amber-900 font-semibold">
-                    {t('auth.demoOtpNotice', { otp: mockOtpHint })}
-                  </div>
-                )}
+                <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 font-semibold">
+                  {t('auth.otpSentBanner', { mobile: mobileNumber })}
+                </div>
                 <div>
                   <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-1.5">
                     <ShieldCheck className="w-4 h-4 text-forest-700" />
@@ -222,25 +285,37 @@ export default function LoginPage() {
                     className="w-full min-h-[50px] px-4 rounded-xl border-2 border-earth-200 text-center text-xl font-extrabold tracking-[0.35em]"
                   />
                 </div>
-                <div className="flex gap-2">
+                <div className="flex items-center justify-between text-xs">
                   <button
                     type="button"
                     onClick={() => {
                       setOtpSent(false);
                       setOtp('');
                     }}
-                    className="px-4 min-h-[48px] rounded-xl border border-earth-200 text-xs font-semibold"
+                    className="inline-flex items-center gap-1 text-forest-700 font-bold hover:underline"
                   >
-                    {t('auth.back')}
+                    <Edit3 className="w-3.5 h-3.5" />
+                    {t('auth.editMobile')}
                   </button>
                   <button
-                    type="submit"
-                    disabled={submitting}
-                    className="flex-1 min-h-[48px] inline-flex items-center justify-center gap-2 rounded-xl bg-forest-700 hover:bg-forest-800 text-white font-bold text-sm disabled:opacity-60"
+                    type="button"
+                    disabled={cooldownSeconds > 0 || submitting}
+                    onClick={() => handleSendOtp()}
+                    className="inline-flex items-center gap-1 text-forest-700 font-bold disabled:text-slate-400"
                   >
-                    {submitting ? t('auth.verifyingOtp') : t('auth.verifyOtp')}
+                    <Clock className="w-3.5 h-3.5" />
+                    {cooldownSeconds > 0
+                      ? t('auth.resendCountdown', { seconds: cooldownSeconds })
+                      : t('auth.resendOtp')}
                   </button>
                 </div>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="w-full min-h-[48px] inline-flex items-center justify-center gap-2 rounded-xl bg-forest-700 hover:bg-forest-800 text-white font-bold text-sm disabled:opacity-60"
+                >
+                  {submitting ? t('auth.verifyingOtp') : t('auth.verifyOtp')}
+                </button>
               </form>
             )
           ) : (
@@ -252,7 +327,7 @@ export default function LoginPage() {
                 <input
                   type="email"
                   {...register('email', { required: t('auth.requiredField') })}
-                  placeholder="you@example.com"
+                  placeholder={t('auth.emailPlaceholder')}
                   className="w-full min-h-[46px] px-3.5 rounded-xl border border-earth-200 text-sm"
                 />
                 {errors.email && (
@@ -281,7 +356,7 @@ export default function LoginPage() {
                 className="w-full min-h-[48px] inline-flex items-center justify-center gap-2 rounded-xl bg-forest-700 hover:bg-forest-800 text-white font-semibold text-sm transition-colors disabled:opacity-60"
               >
                 <LogIn className="w-4 h-4" />
-                {submitting ? t('common.loading') : t('auth.loginBtn')}
+                {submitting ? t('auth.loggingIn') : t('auth.loginBtn')}
               </button>
             </form>
           )}
@@ -296,11 +371,8 @@ export default function LoginPage() {
         <div className="md:col-span-5 bg-forest-50 rounded-3xl border border-forest-200 p-6 space-y-3">
           <div className="flex items-center gap-2 text-forest-900 font-bold">
             <KeyRound className="w-4 h-4" />
-            Hackathon Demo Accounts
+            {t('auth.demoAccountsHeading')}
           </div>
-          <p className="text-xs text-forest-800 leading-relaxed">
-            Click any role below to auto-fill credentials, then click <strong>Log In</strong>.
-          </p>
           <div className="space-y-2 pt-1">
             {DEMO_ACCOUNTS.map((acc) => (
               <button
@@ -309,7 +381,9 @@ export default function LoginPage() {
                 onClick={() => fillDemo(acc)}
                 className="w-full text-left p-3 min-h-[48px] rounded-xl bg-white border border-forest-200 hover:border-forest-500 transition-colors"
               >
-                <div className="text-sm font-semibold text-forest-900">{acc.label}</div>
+                <div className="text-sm font-semibold text-forest-900">
+                  {t(acc.roleKey)}
+                </div>
                 <div className="text-xs text-slate-500 mt-0.5">
                   {acc.email} · {acc.pass}
                 </div>

@@ -1,0 +1,78 @@
+{
+  "sampleFarmer": {
+    "name": "Rajesh Patil",
+    "village": "Baramati",
+    "district": "Pune",
+    "primaryCrop": "Sugarcane"
+  },
+  "sampleRequestDefaults": {
+    "category": "Harvesting",
+    "workersRequired": 4,
+    "durationDays": 3,
+    "dailyWage": 500,
+    "village": "Baramati, Pune",
+    "requestCode": "DEMO-LR-101"
+  },
+  "sampleWorkers": [
+    {
+      "id": "demo-w1",
+      "name": "Ramesh Kale",
+      "initials": "RK",
+      "village": "Malegaon Bk",
+      "phone": "+91 98230 00101",
+      "skillKeys": ["Harvesting", "Land Preparation"],
+      "experienceYears": 7,
+      "rating": "4.9"
+    },
+    {
+      "id": "demo-w2",
+      "name": "Sunita Pawar",
+      "initials": "SP",
+      "village": "Pandare",
+      "phone": "+91 98230 00102",
+      "skillKeys": ["Harvesting", "Weeding"],
+      "experienceYears": 5,
+      "rating": "4.8"
+    },
+    {
+      "id": "demo-w3",
+      "name": "Ganesh Bhosale",
+      "initials": "GB",
+      "village": "Katphal",
+      "phone": "+91 98230 00103",
+      "skillKeys": ["Harvesting", "Fertilizer Application"],
+      "experienceYears": 6,
+      "rating": "4.7"
+    },
+    {
+      "id": "demo-w4",
+      "name": "Anjali Jadhav",
+      "initials": "AJ",
+      "village": "Sangavi",
+      "phone": "+91 98230 00104",
+      "skillKeys": ["Harvesting", "Sowing / Planting"],
+      "experienceYears": 4,
+      "rating": "4.8"
+    },
+    {
+      "id": "demo-w5",
+      "name": "Prakash More",
+      "initials": "PM",
+      "village": "Baramati",
+      "phone": "+91 98230 00105",
+      "skillKeys": ["Tractor / Machinery Operator", "Irrigation Work"],
+      "experienceYears": 9,
+      "rating": "5.0"
+    },
+    {
+      "id": "demo-w6",
+      "name": "Kavita Shinde",
+      "initials": "KS",
+      "village": "Supe",
+      "phone": "+91 98230 00106",
+      "skillKeys": ["Pesticide Spraying", "General Farm Help"],
+      "experienceYears": 5,
+      "rating": "4.8"
+    }
+  ]
+}

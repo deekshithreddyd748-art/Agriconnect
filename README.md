@@ -2,17 +2,18 @@
 
 **Empowering Farmers. Connecting Resources.**
 
-AgriConnect is a mobile-first, multilingual, hyperlocal agricultural service platform connecting farmers with farm labour, machinery owners, and post-harvest facility operators.
+AgriConnect is a mobile-first, multilingual, GPS-first agricultural service platform connecting Indian farmers with farm workers, agricultural machinery owners, and post-harvest facility operators.
 
 ---
 
-## New Farmer-Centric Capabilities
+## Key Platform Capabilities
 
-- **6 Regional Languages (Instant Switch + Persistent)**: `English`, `ಕನ್ನಡ` (Kannada), `हिन्दी` (Hindi), `తెలుగు` (Telugu), `தமிழ்` (Tamil), and `मराठी` (Marathi) via `i18next` and `src/locales/*.json`.
-- **3-Step Mobile OTP Onboarding**: Role selection cards → 10-digit Indian mobile OTP verification (with clearly labelled development mock OTP mode when SMS gateway credentials are unset) → minimal rural profile setup.
-- **Redesigned Farmer Dashboard**: Mobile-first action cards prioritizing **Request Labour**, **Find Equipment**, **Find Facilities**, **My Bookings**, **Labour Demo**, and **Help / How It Works**, plus live notifications.
-- **Request Labour & Worker Discovery Workflow**: Searchable 8-category dropdown with icons, live total cost estimator (`workers × days × dailyWage`), unique `LR-YYYY-XXXX` IDs, open job discovery for Labour Providers, duplicate-application prevention, atomic capacity enforcement (`Open` → `Partially Filled` → `Fully Filled`), and booking confirmation.
-- **Isolated Interactive Labour Demo (`/labour-demo`)**: Complete 5-step interactive simulation stored strictly in local component state so judges and first-time visitors can test the workflow without writing to MongoDB.
+- **100% Regional Localization (6 Indian Languages)**: Instant UI switching and `localStorage` persistence for **English**, **ಕನ್ನಡ (Kannada)**, **हिन्दी (Hindi)**, **తెలుగు (Telugu)**, **தமிழ் (Tamil)**, and **मराठी (Marathi)** via `i18next`, locale-aware `Intl` date/number/currency formatting, UTF-8 Indian script typography (`Noto Sans`), and dev-mode missing-translation warnings.
+- **6-Step Farmer Onboarding & Real SMS OTP Auth**: Step 1 Select Language & Role -> Step 2 Mobile Number -> Step 3 Request OTP -> Step 4 Verify OTP (with 60s resend cooldown, expiry, and edit number) -> Step 5 Minimal Farmer Profile (`Full Name`, `Village`, `District`, optional `Primary Crop`, optional `Farm Size` in `acres`/`hectares`) -> Step 6 Farmer Dashboard. Supports real Indian SMS providers (`MSG91`, `2Factor`, `Twilio`) configured strictly via backend environment variables — returns explicit `503 SMS_NOT_CONFIGURED` if unconfigured (no fake/mock OTP).
+- **Farmer-Centric Dashboard**: Prioritizes `Request Labour`, `Find Agricultural Equipment`, `Find Nearby Workers`, `Find Post-Harvest Facilities`, `My Labour Requests`, `My Bookings`, `Notifications`, `Labour Demo / How It Works`, and `Profile & Settings`.
+- **Structured Labour Requests & Atomic Worker Acceptance (`LabourBooking`)**: Searchable 10-category selector (`Sowing / Planting`, `Harvesting`, `Weeding`, `Pesticide Spraying`, `Tractor / Machinery Operator`, `Irrigation Work`, `Land Preparation`, `Fertilizer Application`, `General Farm Help`, `Other Agricultural Work`), initial `Pending` status, live cost estimator (`Workers × Duration × Daily Wage` in ₹), atomic worker direct acceptance (`POST /api/labour-requests/:id/accept`) preventing duplicates and overbooking, and privacy-scoped contact reveal.
+- **Isolated 6-Step Interactive Labour Demo (`/labour-demo`)**: Uses isolated mock data (`Frontend/src/data/demoLabourData.json`) strictly in client state so visitors can walk through all 6 steps safely without touching the database or SMS gateway.
+- **GPS-First Hyperlocal Discovery**: One-tap device GPS pinpointing (`CurrentLocationPicker` + OpenStreetMap/Nominatim reverse geocoding + Haversine 5–25 km radius sorting) with zero manual latitude/longitude input fields in UI.
 
 ---
 
@@ -27,9 +28,12 @@ AgriConnect is a mobile-first, multilingual, hyperlocal agricultural service pla
 | `JWT_SECRET` | `<long-random-secret>` | Secret for signing JWTs and HMAC OTP hashes |
 | `JWT_EXPIRES_IN` | `7d` | Token expiration |
 | `CLIENT_URL` | `http://localhost:5173,https://agriconnect-deekshithreddyd748-6042.vercel.app` | Comma-separated allowed CORS origins |
-| `AUTO_SEED` | `true` | Auto-seed demo data if `User` collection is empty |
-| `ENABLE_DEMO_OTP` | `true` | Enables clearly labelled mock OTP generation when SMS gateway credentials are absent |
-| `TWILIO_ACCOUNT_SID` / `AUTH_TOKEN` / `FROM_NUMBER` | optional | Optional production SMS OTP gateway credentials |
+| `AUTO_SEED` | `true` | Auto-seed demo users, machinery, labour teams, facilities, and bookings when `User` collection is empty |
+| `SMS_PROVIDER` | `msg91` / `twilio_verify` / `2factor` / `twilio` | Active SMS OTP gateway provider (`Backend/services/smsOtpService.js`) |
+| `MSG91_AUTH_KEY` / `MSG91_TEMPLATE_ID` / `MSG91_SERVER_VERIFY` | optional | MSG91 OTP v5 send + optional server-side verify credentials |
+| `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_VERIFY_SERVICE_SID` | optional | Twilio Verify v2 server-side OTP send & verification credentials |
+| `TWOFACTOR_API_KEY` / `TWOFACTOR_TEMPLATE_NAME` | optional | 2Factor.in SMS OTP API credentials |
+| `TWILIO_FROM_NUMBER` | optional | Twilio Programmable SMS sender number (if not using Twilio Verify) |
 
 ### Frontend (`Frontend/.env`)
 | Variable | Example Value | Description |
@@ -63,7 +67,7 @@ npm run dev
 - **Root Directory**: `Backend`
 - **Build Command**: `npm install`
 - **Start Command**: `npm start`
-- **Env Vars**: `NODE_ENV=production`, `MONGO_URI`, `JWT_SECRET`, `JWT_EXPIRES_IN=7d`, `CLIENT_URL=https://agriconnect-deekshithreddyd748-6042.vercel.app`, `AUTO_SEED=true` (plus Twilio vars or `ENABLE_DEMO_OTP=true` for hackathon demos).
+- **Env Vars**: `NODE_ENV=production`, `MONGO_URI`, `JWT_SECRET`, `JWT_EXPIRES_IN=7d`, `CLIENT_URL=https://agriconnect-deekshithreddyd748-6042.vercel.app`, `AUTO_SEED=true`, and your `SMS_PROVIDER` credentials (`MSG91_*`, `TWOFACTOR_*`, or `TWILIO_*`).
 
 ### Frontend (Vercel)
 - **Root Directory**: `Frontend`
@@ -75,12 +79,11 @@ npm run dev
 
 ---
 
-## Demo Accounts
+## Demo Accounts (Seeded Email/Password Accounts)
 
-- **Mobile OTP Demo Numbers**: Farmer `9823011223`, Labour Provider `9890177889`
-- **Email / Password Demo Accounts** (1-click fill on `/login`):
-  - Farmer: `farmer@agriconnect.in` / `Demo@123`
-  - Equipment Owner: `owner@agriconnect.in` / `Demo@123`
-  - Labour Provider: `labour@agriconnect.in` / `Demo@123`
-  - Facility Owner: `facility@agriconnect.in` / `Demo@123`
-  - Administrator: `admin@agriconnect.in` / `Admin@123`
+1-click auto-fill is available on `/login`:
+- **Farmer**: `farmer@agriconnect.in` / `Demo@123`
+- **Equipment Owner**: `owner@agriconnect.in` / `Demo@123`
+- **Labour Provider**: `labour@agriconnect.in` / `Demo@123`
+- **Facility Owner**: `facility@agriconnect.in` / `Demo@123`
+- **Administrator**: `admin@agriconnect.in` / `Admin@123`

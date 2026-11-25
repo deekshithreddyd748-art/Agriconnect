@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { ArrowLeft, MapPin, Phone, Users, CheckCircle2, Flag } from 'lucide-react';
 import api, { getErrorMessage } from '../../services/api';
@@ -9,6 +10,7 @@ import ServiceMap from '../../components/ServiceMap';
 import { AvailabilityBadge } from '../../components/StatusBadge';
 import {
   formatCurrency,
+  formatDate,
   formatDistanceLabel,
   hasValidCoords,
 } from '../../utils/distance';
@@ -17,6 +19,7 @@ export default function LabourDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { t, i18n } = useTranslation();
   const { coords, hasCoords } = useLocationContext();
 
   const [item, setItem] = useState(null);
@@ -49,12 +52,14 @@ export default function LabourDetailsPage() {
   }, [user, farmAddress]);
 
   if (loading) {
-    return <div className="py-16 text-center text-sm text-slate-500">Loading labour crew...</div>;
+    return (
+      <div className="py-16 text-center text-sm text-slate-500">{t('common.loading')}</div>
+    );
   }
   if (!item) {
     return (
       <div className="py-16 text-center text-sm text-slate-600">
-        Labour listing not found.
+        {t('common.noResults')}
       </div>
     );
   }
@@ -67,12 +72,12 @@ export default function LabourDetailsPage() {
   async function handleBook(e) {
     e.preventDefault();
     if (!user) {
-      toast.error('Please log in as a farmer to book labour.');
+      toast.error(t('marketplace.loginToBook'));
       navigate('/login');
       return;
     }
     if (user.role !== 'farmer' && user.role !== 'admin') {
-      toast.error('Only farmer accounts can request labour.');
+      toast.error(t('marketplace.loginToBook'));
       return;
     }
     setSubmitting(true);
@@ -93,23 +98,27 @@ export default function LabourDetailsPage() {
         },
         notes,
       });
-      toast.success('Labour request submitted!');
+      toast.success(
+        t('marketplace.bookingCreated', {
+          code: res.data.data?.bookingCode || res.data.data?._id,
+        })
+      );
       navigate(`/bookings/${res.data.data._id}`);
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Could not submit labour request.'));
+      toast.error(getErrorMessage(err, t('marketplace.bookingFailed')));
     } finally {
       setSubmitting(false);
     }
   }
 
   async function handleReport() {
-    const reason = window.prompt('Describe why you are reporting this listing:');
+    const reason = window.prompt(t('bookings.notesHeading'));
     if (!reason || !reason.trim()) return;
     try {
       await api.post(`/discovery/report/labour/${item._id}`, { reason });
-      toast.success('Listing flagged for admin review.');
+      toast.success(t('common.saveSuccess'));
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Could not submit report.'));
+      toast.error(getErrorMessage(err, t('common.errorGeneric')));
     }
   }
 
@@ -120,7 +129,7 @@ export default function LabourDetailsPage() {
           to="/labour"
           className="inline-flex items-center gap-1.5 text-sm font-semibold text-forest-700 hover:underline"
         >
-          <ArrowLeft className="w-4 h-4" /> Back to Labour Discovery
+          <ArrowLeft className="w-4 h-4" /> {t('marketplace.backToList')}
         </Link>
         {user && (
           <button
@@ -128,7 +137,7 @@ export default function LabourDetailsPage() {
             onClick={handleReport}
             className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-rose-600"
           >
-            <Flag className="w-3.5 h-3.5" /> Report Listing
+            <Flag className="w-3.5 h-3.5" /> !
           </button>
         )}
       </div>
@@ -138,13 +147,13 @@ export default function LabourDetailsPage() {
           <div className="bg-white rounded-3xl border border-earth-200 p-6 shadow-sm space-y-4">
             <div className="flex items-center justify-between">
               <span className="px-3 py-1 rounded-lg bg-harvest-100 text-harvest-700 text-xs font-bold">
-                {item.category}
+                {t(`categories.labour.${item.category}`, item.category)}
               </span>
               <AvailabilityBadge available={item.availability} />
             </div>
 
             <h1 className="text-2xl sm:text-3xl font-bold text-forest-900">
-              {item.title || `${item.category} Team`}
+              {item.title || t(`categories.labour.${item.category}`, item.category)}
             </h1>
             <p className="text-sm text-slate-600 leading-relaxed">{item.description}</p>
 
@@ -152,7 +161,7 @@ export default function LabourDetailsPage() {
               <div className="p-4 rounded-2xl bg-earth-50 border border-earth-200 space-y-2">
                 {item.experience && (
                   <div className="text-xs text-slate-700">
-                    Experience: <strong>{item.experience}</strong>
+                    {t('worker.experienceLabel')}: <strong>{item.experience}</strong>
                   </div>
                 )}
                 {item.skills?.length > 0 && (
@@ -162,7 +171,7 @@ export default function LabourDetailsPage() {
                         key={sk}
                         className="px-2.5 py-1 rounded-lg bg-white border border-earth-200 text-xs font-semibold text-forest-800"
                       >
-                        {sk}
+                        {t(`categories.labour.${sk}`, sk)}
                       </span>
                     ))}
                   </div>
@@ -172,19 +181,19 @@ export default function LabourDetailsPage() {
 
             <div className="grid grid-cols-3 gap-3">
               <div className="p-3 rounded-xl bg-earth-50 border border-earth-200">
-                <div className="text-[11px] text-slate-500">Workers Available</div>
+                <div className="text-[11px] text-slate-500">{t('common.workers')}</div>
                 <div className="font-bold text-forest-900 text-lg">
                   {item.workersAvailable}
                 </div>
               </div>
               <div className="p-3 rounded-xl bg-earth-50 border border-earth-200">
-                <div className="text-[11px] text-slate-500">Rate / Worker</div>
+                <div className="text-[11px] text-slate-500">{t('provider.rateLabel')}</div>
                 <div className="font-bold text-forest-900">
-                  {formatCurrency(item.pricePerWorker)} / {item.priceUnit}
+                  {formatCurrency(item.pricePerWorker, i18n.language)} / {item.priceUnit}
                 </div>
               </div>
               <div className="p-3 rounded-xl bg-earth-50 border border-earth-200">
-                <div className="text-[11px] text-slate-500">Distance</div>
+                <div className="text-[11px] text-slate-500">{t('nav.nearbyMap')}</div>
                 <div className="font-bold text-forest-700">
                   {formatDistanceLabel(item)}
                 </div>
@@ -194,7 +203,7 @@ export default function LabourDetailsPage() {
             {item.availableDates?.length > 0 && (
               <div className="text-xs text-slate-600">
                 <span className="font-semibold text-slate-800 block mb-1">
-                  Upcoming Available Dates:
+                  {t('common.available')} {t('common.date')}:
                 </span>
                 <div className="flex flex-wrap gap-1.5">
                   {item.availableDates.map((d) => (
@@ -202,7 +211,7 @@ export default function LabourDetailsPage() {
                       key={d}
                       className="px-2.5 py-1 rounded-lg bg-forest-50 text-forest-800 font-medium"
                     >
-                      {d}
+                      {formatDate(d, i18n.language)}
                     </span>
                   ))}
                 </div>
@@ -212,7 +221,7 @@ export default function LabourDetailsPage() {
             <div className="pt-3 border-t border-earth-200 flex flex-wrap justify-between gap-2 text-sm">
               <div>
                 <div className="font-semibold text-slate-900">
-                  Provider: {item.providerId?.name}
+                  {t('bookings.providerLabel')}: {item.providerId?.name}
                 </div>
                 <div className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
                   <MapPin className="w-3.5 h-3.5" />
@@ -246,18 +255,18 @@ export default function LabourDetailsPage() {
           <div className="bg-white rounded-3xl border border-earth-200 p-6 shadow-sm space-y-4">
             <h2 className="text-xl font-bold text-forest-900 flex items-center gap-2">
               <Users className="w-5 h-5 text-harvest-600" />
-              Request Farm Labour
+              {t('marketplace.bookLabourTitle')}
             </h2>
 
             {!item.availability ? (
               <div className="p-4 rounded-xl bg-rose-50 text-rose-800 text-sm">
-                This labour crew is currently marked unavailable.
+                {t('common.unavailable')}
               </div>
             ) : (
               <form onSubmit={handleBook} className="space-y-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Work Date *
+                    {t('marketplace.startDate')} *
                   </label>
                   <input
                     type="date"
@@ -271,7 +280,7 @@ export default function LabourDetailsPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Workers Needed (Max {item.workersAvailable}) *
+                      {t('labourRequest.workersLabel')} ({item.workersAvailable}) *
                     </label>
                     <input
                       type="number"
@@ -285,7 +294,7 @@ export default function LabourDetailsPage() {
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Duration ({item.priceUnit}s) *
+                      {t('marketplace.quantityDays')} ({item.priceUnit}) *
                     </label>
                     <input
                       type="number"
@@ -300,7 +309,7 @@ export default function LabourDetailsPage() {
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Farm Location *
+                    {t('common.address')} *
                   </label>
                   <input
                     type="text"
@@ -313,27 +322,29 @@ export default function LabourDetailsPage() {
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Work Notes
+                    {t('marketplace.notesLabel')}
                   </label>
                   <textarea
                     rows={2}
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Crop, acreage, shift start time..."
+                    placeholder={t('marketplace.notesPlaceholder')}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-earth-200 text-sm"
                   />
                 </div>
 
                 <div className="p-4 rounded-2xl bg-forest-50 border border-forest-200 space-y-1">
                   <div className="flex justify-between text-sm">
-                    <span className="text-forest-800 font-medium">Estimated Cost</span>
+                    <span className="text-forest-800 font-medium">
+                      {t('marketplace.bookingTotal')}
+                    </span>
                     <span className="text-xl font-extrabold text-forest-900">
-                      {formatCurrency(estimatedCost)}
+                      {formatCurrency(estimatedCost, i18n.language)}
                     </span>
                   </div>
                   <p className="text-[11px] text-forest-700 flex items-center gap-1">
                     <CheckCircle2 className="w-3.5 h-3.5" />
-                    Direct settlement upon work completion.
+                    {t('marketplace.loginToBook')}
                   </p>
                 </div>
 
@@ -342,7 +353,9 @@ export default function LabourDetailsPage() {
                   disabled={submitting}
                   className="w-full py-3 rounded-xl bg-forest-700 hover:bg-forest-800 text-white font-semibold text-sm disabled:opacity-60"
                 >
-                  {submitting ? 'Submitting...' : 'Submit Labour Request'}
+                  {submitting
+                    ? t('marketplace.submittingBooking')
+                    : t('marketplace.confirmBookingBtn')}
                 </button>
               </form>
             )}

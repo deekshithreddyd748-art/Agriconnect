@@ -7,6 +7,7 @@ import Equipment from '../models/Equipment.js';
 import Labour from '../models/Labour.js';
 import LabourRequest from '../models/LabourRequest.js';
 import LabourApplication from '../models/LabourApplication.js';
+import LabourBooking from '../models/LabourBooking.js';
 import Facility from '../models/Facility.js';
 import Booking from '../models/Booking.js';
 
@@ -525,6 +526,8 @@ export async function ensureDemoData({ forceReset = false } = {}) {
       category: 'Harvesting',
       workersRequired: 5,
       workersAccepted: 1,
+      remainingVacancies: 4,
+      acceptedWorkerIds: [labourProvider._id],
       startDate: '2026-12-02',
       durationDays: 3,
       dailyWage: 520,
@@ -539,7 +542,7 @@ export async function ensureDemoData({ forceReset = false } = {}) {
       },
       instructions: 'Sugarcane harvesting & clean bundling near main canal gate.',
       preferredHours: '07:00 AM - 02:00 PM',
-      status: 'Partially Filled',
+      status: 'Worker Accepted',
     },
     {
       requestCode: 'LR-2026-1002',
@@ -547,6 +550,8 @@ export async function ensureDemoData({ forceReset = false } = {}) {
       category: 'Weeding',
       workersRequired: 4,
       workersAccepted: 0,
+      remainingVacancies: 4,
+      acceptedWorkerIds: [],
       startDate: '2026-12-05',
       durationDays: 2,
       dailyWage: 450,
@@ -561,21 +566,30 @@ export async function ensureDemoData({ forceReset = false } = {}) {
       },
       instructions: 'Manual inter-row weeding for onion field.',
       preferredHours: '06:30 AM - 01:30 PM',
-      status: 'Open',
+      status: 'Pending',
     },
   ]);
 
-  await LabourApplication.create({
-    requestId: seedRequests[0]._id,
-    workerId: labourProvider._id,
-    workerName: labourProvider.name,
-    workerPhone: labourProvider.phone,
-    workerVillage: 'Pandare, Pune',
-    skills: labourProvider.skills,
-    experience: labourProvider.experience,
-    message: 'Available with harvesting tools on Dec 2.',
-    status: 'Accepted',
-  });
+  await Promise.all([
+    LabourApplication.create({
+      requestId: seedRequests[0]._id,
+      workerId: labourProvider._id,
+      workerName: labourProvider.name,
+      workerPhone: labourProvider.phone,
+      workerVillage: 'Pandare, Pune',
+      skills: labourProvider.skills,
+      experience: labourProvider.experience,
+      message: 'Available with harvesting tools on Dec 2.',
+      status: 'Accepted',
+    }),
+    LabourBooking.create({
+      bookingCode: 'LB-2026-1001',
+      labourRequestId: seedRequests[0]._id,
+      farmerId: farmer._id,
+      workerId: labourProvider._id,
+      bookingStatus: 'Accepted',
+    }),
+  ]);
 
   console.log('AgriConnect demo data seeded successfully.');
   return { seeded: true };

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { ArrowLeft, MapPin, Phone, Warehouse, Clock, CheckCircle2, Flag } from 'lucide-react';
 import api, { getErrorMessage } from '../../services/api';
@@ -18,6 +19,7 @@ export default function FacilityDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { t, i18n } = useTranslation();
   const { coords, hasCoords } = useLocationContext();
 
   const [item, setItem] = useState(null);
@@ -47,10 +49,16 @@ export default function FacilityDetailsPage() {
   }, [id, coords?.lat, coords?.lng, hasCoords]);
 
   if (loading) {
-    return <div className="py-16 text-center text-sm text-slate-500">Loading facility...</div>;
+    return (
+      <div className="py-16 text-center text-sm text-slate-500">{t('common.loading')}</div>
+    );
   }
   if (!item) {
-    return <div className="py-16 text-center text-sm text-slate-600">Facility not found.</div>;
+    return (
+      <div className="py-16 text-center text-sm text-slate-600">
+        {t('common.noResults')}
+      </div>
+    );
   }
 
   const estimatedCost =
@@ -66,12 +74,12 @@ export default function FacilityDetailsPage() {
   async function handleReserve(e) {
     e.preventDefault();
     if (!user) {
-      toast.error('Please log in as a farmer to reserve facility space.');
+      toast.error(t('marketplace.loginToBook'));
       navigate('/login');
       return;
     }
     if (user.role !== 'farmer' && user.role !== 'admin') {
-      toast.error('Only farmer accounts can request facility reservations.');
+      toast.error(t('marketplace.loginToBook'));
       return;
     }
 
@@ -94,23 +102,27 @@ export default function FacilityDetailsPage() {
         },
         notes,
       });
-      toast.success('Reservation request submitted!');
+      toast.success(
+        t('marketplace.bookingCreated', {
+          code: res.data.data?.bookingCode || res.data.data?._id,
+        })
+      );
       navigate(`/bookings/${res.data.data._id}`);
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Could not submit reservation.'));
+      toast.error(getErrorMessage(err, t('marketplace.bookingFailed')));
     } finally {
       setSubmitting(false);
     }
   }
 
   async function handleReport() {
-    const reason = window.prompt('Describe why you are reporting this facility:');
+    const reason = window.prompt(t('bookings.notesHeading'));
     if (!reason || !reason.trim()) return;
     try {
       await api.post(`/discovery/report/facility/${item._id}`, { reason });
-      toast.success('Listing flagged for admin review.');
+      toast.success(t('common.saveSuccess'));
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Could not submit report.'));
+      toast.error(getErrorMessage(err, t('common.errorGeneric')));
     }
   }
 
@@ -121,7 +133,7 @@ export default function FacilityDetailsPage() {
           to="/facilities"
           className="inline-flex items-center gap-1.5 text-sm font-semibold text-forest-700 hover:underline"
         >
-          <ArrowLeft className="w-4 h-4" /> Back to Facilities
+          <ArrowLeft className="w-4 h-4" /> {t('marketplace.backToList')}
         </Link>
         {user && (
           <button
@@ -129,7 +141,7 @@ export default function FacilityDetailsPage() {
             onClick={handleReport}
             className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-rose-600"
           >
-            <Flag className="w-3.5 h-3.5" /> Report Listing
+            <Flag className="w-3.5 h-3.5" /> !
           </button>
         )}
       </div>
@@ -148,7 +160,7 @@ export default function FacilityDetailsPage() {
             <div className="p-6 space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold uppercase tracking-wider text-sky-700">
-                  {item.category}
+                  {t(`categories.facility.${item.category}`, item.category)}
                 </span>
                 <AvailabilityBadge available={item.availability} />
               </div>
@@ -160,7 +172,7 @@ export default function FacilityDetailsPage() {
 
               <div className="p-4 rounded-2xl bg-earth-50 border border-earth-200 space-y-2">
                 <div className="flex justify-between text-xs font-semibold text-slate-700">
-                  <span>Available Capacity</span>
+                  <span>{t('marketplace.capacityLabel')}</span>
                   <span>
                     {item.availableCapacity} / {item.capacity} {item.capacityUnit} ({capPct}%)
                   </span>
@@ -175,19 +187,19 @@ export default function FacilityDetailsPage() {
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
                 <div className="p-3 rounded-xl bg-earth-50 border border-earth-200">
-                  <div className="text-slate-500">Tariff</div>
+                  <div className="text-slate-500">{t('provider.rateLabel')}</div>
                   <div className="font-bold text-forest-900 text-sm">
-                    {formatCurrency(item.price)} {item.priceUnit}
+                    {formatCurrency(item.price, i18n.language)} {item.priceUnit}
                   </div>
                 </div>
                 <div className="p-3 rounded-xl bg-earth-50 border border-earth-200">
-                  <div className="text-slate-500">Operating Hours</div>
+                  <div className="text-slate-500">{t('labourRequest.hoursLabel')}</div>
                   <div className="font-bold text-slate-800 flex items-center gap-1 mt-0.5">
                     <Clock className="w-3.5 h-3.5" /> {item.operatingHours}
                   </div>
                 </div>
                 <div className="p-3 rounded-xl bg-earth-50 border border-earth-200">
-                  <div className="text-slate-500">Distance</div>
+                  <div className="text-slate-500">{t('nav.nearbyMap')}</div>
                   <div className="font-bold text-forest-700">
                     {formatDistanceLabel(item)}
                   </div>
@@ -197,7 +209,7 @@ export default function FacilityDetailsPage() {
               {item.servicesOffered?.length > 0 && (
                 <div>
                   <div className="text-xs font-semibold text-slate-700 mb-1.5">
-                    Available Services
+                    {t('nav.services')}
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {item.servicesOffered.map((srv) => (
@@ -215,7 +227,7 @@ export default function FacilityDetailsPage() {
               <div className="pt-3 border-t border-earth-200 flex flex-wrap justify-between gap-2 text-sm">
                 <div>
                   <div className="font-semibold text-slate-900">
-                    Operator: {item.operatorId?.name}
+                    {t('marketplace.ownerLabel')}: {item.operatorId?.name}
                   </div>
                   <div className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
                     <MapPin className="w-3.5 h-3.5" />
@@ -248,18 +260,18 @@ export default function FacilityDetailsPage() {
           <div className="bg-white rounded-3xl border border-earth-200 p-6 shadow-sm space-y-4">
             <h2 className="text-xl font-bold text-forest-900 flex items-center gap-2">
               <Warehouse className="w-5 h-5 text-sky-700" />
-              Request Facility Reservation
+              {t('marketplace.bookFacilityTitle')}
             </h2>
 
             {!item.availability || item.availableCapacity <= 0 ? (
               <div className="p-4 rounded-xl bg-rose-50 text-rose-800 text-sm">
-                This facility currently has no available capacity for new reservations.
+                {t('common.unavailable')}
               </div>
             ) : (
               <form onSubmit={handleReserve} className="space-y-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Drop-off / Reservation Date *
+                    {t('marketplace.startDate')} *
                   </label>
                   <input
                     type="date"
@@ -273,7 +285,7 @@ export default function FacilityDetailsPage() {
                 {item.servicesOffered?.length > 0 && (
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Required Service
+                      {t('nav.services')}
                     </label>
                     <select
                       value={selectedService}
@@ -292,7 +304,7 @@ export default function FacilityDetailsPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Quantity ({item.capacityUnit}) *
+                      {t('marketplace.tonnageLabel')} ({item.capacityUnit}) *
                     </label>
                     <input
                       type="number"
@@ -306,7 +318,7 @@ export default function FacilityDetailsPage() {
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Duration (Days) *
+                      {t('labourRequest.durationLabel')} *
                     </label>
                     <input
                       type="number"
@@ -321,27 +333,29 @@ export default function FacilityDetailsPage() {
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Produce & Storage Notes
+                    {t('marketplace.notesLabel')}
                   </label>
                   <textarea
                     rows={3}
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Crop variety, packaging type, temperature preference..."
+                    placeholder={t('marketplace.notesPlaceholder')}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-earth-200 text-sm"
                   />
                 </div>
 
                 <div className="p-4 rounded-2xl bg-forest-50 border border-forest-200 space-y-1">
                   <div className="flex justify-between text-sm">
-                    <span className="text-forest-800 font-medium">Estimated Charge</span>
+                    <span className="text-forest-800 font-medium">
+                      {t('marketplace.bookingTotal')}
+                    </span>
                     <span className="text-xl font-extrabold text-forest-900">
-                      {formatCurrency(estimatedCost)}
+                      {formatCurrency(estimatedCost, i18n.language)}
                     </span>
                   </div>
                   <p className="text-[11px] text-forest-700 flex items-center gap-1">
                     <CheckCircle2 className="w-3.5 h-3.5" />
-                    Pay at facility counter upon intake/dispatch.
+                    {t('marketplace.loginToBook')}
                   </p>
                 </div>
 
@@ -350,7 +364,9 @@ export default function FacilityDetailsPage() {
                   disabled={submitting}
                   className="w-full py-3 rounded-xl bg-forest-700 hover:bg-forest-800 text-white font-semibold text-sm disabled:opacity-60"
                 >
-                  {submitting ? 'Reserving...' : 'Submit Reservation Request'}
+                  {submitting
+                    ? t('marketplace.submittingBooking')
+                    : t('marketplace.confirmBookingBtn')}
                 </button>
               </form>
             )}
