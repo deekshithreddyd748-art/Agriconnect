@@ -3,9 +3,15 @@ import Equipment from '../models/Equipment.js';
 import Labour from '../models/Labour.js';
 import Facility from '../models/Facility.js';
 import Booking from '../models/Booking.js';
-import { asyncHandler } from '../middleware/errorHandler.js';
+import { AppError, asyncHandler } from '../middleware/errorHandler.js';
 import { enrichAndFilterByDistance } from '../utils/haversine.js';
 import { extractQueryCoords } from '../utils/listingHelpers.js';
+
+const REPORT_MODELS = {
+  equipment: Equipment,
+  labour: Labour,
+  facility: Facility,
+};
 
 export const getPublicStats = asyncHandler(async (_req, res) => {
   const [
@@ -45,18 +51,35 @@ export const getPublicStats = asyncHandler(async (_req, res) => {
 });
 
 export const getNearbyServices = asyncHandler(async (req, res) => {
-  const { serviceType = 'all' } = req.query;
+  const { serviceType = 'all', district, village } = req.query;
   const { userCoords, radiusKm } = extractQueryCoords(req.query);
+
+  const locationFilter = {};
+  if (district && district.trim()) {
+    locationFilter['location.district'] = new RegExp(district.trim(), 'i');
+  }
+  if (village && village.trim()) {
+    locationFilter['location.village'] = new RegExp(village.trim(), 'i');
+  }
 
   const [equipments, labours, facilities] = await Promise.all([
     serviceType === 'all' || serviceType === 'equipment'
-      ? Equipment.find({ availability: true }).populate('ownerId', 'name phone village district')
+      ? Equipment.find({ availability: true, ...locationFilter }).populate(
+          'ownerId',
+          'name phone village district'
+        )
       : [],
     serviceType === 'all' || serviceType === 'labour'
-      ? Labour.find({ availability: true }).populate('providerId', 'name phone village district')
+      ? Labour.find({ availability: true, ...locationFilter }).populate(
+          'providerId',
+          'name phone village district'
+        )
       : [],
     serviceType === 'all' || serviceType === 'facility'
-      ? Facility.find({ availability: true }).populate('operatorId', 'name phone village district')
+      ? Facility.find({ availability: true, ...locationFilter }).populate(
+          'operatorId',
+          'name phone village district'
+        )
       : [],
   ]);
 
@@ -191,5 +214,29 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
       estimatedEarnings,
       recentRequests: bookings.slice(0, 6),
     },
+  });
+});
+
+export const reportListing = asyncHandler(async (req, res) => {
+  const { type, id } = req.params;
+  const { reason } = req.body;
+  const Model = REPORT_MODELS[type];
+  if (!Model) throw new AppError('Invalid listing type.', 400);
+  if (!reason || !String(reason).trim()) {
+    throw new AppError('Please provide a reason for reporting this listing.', 400);
+  }
+
+  const doc = await Model.findById(id);
+  if (!doc) throw new AppError('Listing not found.', 404);
+
+  doc.isReported = true;
+  doc.reportReason = String(reason).trim().slice(0, 400);
+  doc.reportedBy = req.user._id;
+  doc.reportedAt = new Date();
+  await doc.save();
+
+  res.json({
+    success: true,
+    message: 'Listing has been flagged for administrator review.',
   });
 });

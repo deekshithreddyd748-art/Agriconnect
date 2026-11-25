@@ -66,17 +66,34 @@ export const createBooking = asyncHandler(async (req, res) => {
   const parsedWorkers = Math.max(1, Number(workersRequested) || 1);
   const parsedQty = Math.max(1, Number(quantity) || 1);
 
+  const activeOnDate = await Booking.find({
+    serviceId: serviceDoc._id,
+    bookingDate,
+    status: { $in: ['Pending', 'Accepted'] },
+  }).lean();
+
   let estimatedCost = 0;
   let resolvedUnit = durationUnit || serviceDoc.priceUnit || 'day';
 
   if (serviceType === 'equipment') {
+    if (activeOnDate.length > 0) {
+      throw new AppError(
+        `This equipment already has a Pending or Accepted booking on ${bookingDate}. Please choose a different date.`,
+        409
+      );
+    }
     estimatedCost = serviceDoc.price * parsedDuration;
     resolvedUnit = durationUnit || serviceDoc.priceUnit;
   } else if (serviceType === 'labour') {
-    if (parsedWorkers > serviceDoc.workersAvailable) {
+    const bookedWorkers = activeOnDate.reduce(
+      (sum, b) => sum + (b.workersRequested || 0),
+      0
+    );
+    const remainingWorkers = Math.max(0, serviceDoc.workersAvailable - bookedWorkers);
+    if (parsedWorkers > remainingWorkers) {
       throw new AppError(
-        `Only ${serviceDoc.workersAvailable} workers are currently available.`,
-        400
+        `Only ${remainingWorkers} workers remain unbooked on ${bookingDate}.`,
+        409
       );
     }
     estimatedCost = serviceDoc.pricePerWorker * parsedWorkers * parsedDuration;

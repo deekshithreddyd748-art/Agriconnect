@@ -21,6 +21,9 @@ export const getAdminOverview = asyncHandler(async (_req, res) => {
     totalEquipment,
     totalLabour,
     totalFacilities,
+    reportedEquipment,
+    reportedLabour,
+    reportedFacilities,
     totalBookings,
     statusAggregation,
     recentBookings,
@@ -34,10 +37,11 @@ export const getAdminOverview = asyncHandler(async (_req, res) => {
     Equipment.countDocuments({}),
     Labour.countDocuments({}),
     Facility.countDocuments({}),
+    Equipment.countDocuments({ isReported: true }),
+    Labour.countDocuments({ isReported: true }),
+    Facility.countDocuments({ isReported: true }),
     Booking.countDocuments({}),
-    Booking.aggregate([
-      { $group: { _id: '$status', count: { $sum: 1 } } },
-    ]),
+    Booking.aggregate([{ $group: { _id: '$status', count: { $sum: 1 } } }]),
     Booking.find({})
       .populate('farmerId', 'name')
       .populate('providerId', 'name')
@@ -71,6 +75,7 @@ export const getAdminOverview = asyncHandler(async (_req, res) => {
       totalEquipment,
       totalLabour,
       totalFacilities,
+      reportedListingsCount: reportedEquipment + reportedLabour + reportedFacilities,
       totalBookings,
       bookingStatusBreakdown,
       recentBookings,
@@ -107,9 +112,21 @@ export const deleteUser = asyncHandler(async (req, res) => {
 
 export const getAllListingsAdmin = asyncHandler(async (_req, res) => {
   const [equipments, labours, facilities] = await Promise.all([
-    Equipment.find({}).populate('ownerId', 'name email').sort({ createdAt: -1 }).lean(),
-    Labour.find({}).populate('providerId', 'name email').sort({ createdAt: -1 }).lean(),
-    Facility.find({}).populate('operatorId', 'name email').sort({ createdAt: -1 }).lean(),
+    Equipment.find({})
+      .populate('ownerId', 'name email')
+      .populate('reportedBy', 'name email')
+      .sort({ createdAt: -1 })
+      .lean(),
+    Labour.find({})
+      .populate('providerId', 'name email')
+      .populate('reportedBy', 'name email')
+      .sort({ createdAt: -1 })
+      .lean(),
+    Facility.find({})
+      .populate('operatorId', 'name email')
+      .populate('reportedBy', 'name email')
+      .sort({ createdAt: -1 })
+      .lean(),
   ]);
 
   const unified = [
@@ -120,6 +137,10 @@ export const getAllListingsAdmin = asyncHandler(async (_req, res) => {
       category: e.category,
       ownerName: e.ownerId?.name || 'Unknown',
       availability: e.availability,
+      isReported: Boolean(e.isReported),
+      reportReason: e.reportReason || '',
+      reportedByName: e.reportedBy?.name || '',
+      reportedAt: e.reportedAt,
       locationText: [e.location?.village, e.location?.district].filter(Boolean).join(', '),
       createdAt: e.createdAt,
     })),
@@ -130,6 +151,10 @@ export const getAllListingsAdmin = asyncHandler(async (_req, res) => {
       category: l.category,
       ownerName: l.providerId?.name || 'Unknown',
       availability: l.availability,
+      isReported: Boolean(l.isReported),
+      reportReason: l.reportReason || '',
+      reportedByName: l.reportedBy?.name || '',
+      reportedAt: l.reportedAt,
       locationText: [l.location?.village, l.location?.district].filter(Boolean).join(', '),
       createdAt: l.createdAt,
     })),
@@ -140,12 +165,24 @@ export const getAllListingsAdmin = asyncHandler(async (_req, res) => {
       category: f.category,
       ownerName: f.operatorId?.name || 'Unknown',
       availability: f.availability,
+      isReported: Boolean(f.isReported),
+      reportReason: f.reportReason || '',
+      reportedByName: f.reportedBy?.name || '',
+      reportedAt: f.reportedAt,
       locationText: [f.location?.village, f.location?.district].filter(Boolean).join(', '),
       createdAt: f.createdAt,
     })),
   ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
   res.json({ success: true, data: unified });
+});
+
+export const getAllBookingsAdmin = asyncHandler(async (_req, res) => {
+  const bookings = await Booking.find({})
+    .populate('farmerId', 'name email phone village district')
+    .populate('providerId', 'name email phone village district')
+    .sort({ createdAt: -1 });
+  res.json({ success: true, data: bookings });
 });
 
 export const toggleListingAvailabilityAdmin = asyncHandler(async (req, res) => {
@@ -158,6 +195,21 @@ export const toggleListingAvailabilityAdmin = asyncHandler(async (req, res) => {
   await doc.save();
 
   res.json({ success: true, data: doc });
+});
+
+export const dismissListingReportAdmin = asyncHandler(async (req, res) => {
+  const Model = LISTING_MODELS[req.params.type];
+  if (!Model) throw new AppError('Invalid listing type.', 400);
+
+  const doc = await Model.findById(req.params.id);
+  if (!doc) throw new AppError('Listing not found.', 404);
+  doc.isReported = false;
+  doc.reportReason = '';
+  doc.reportedBy = null;
+  doc.reportedAt = null;
+  await doc.save();
+
+  res.json({ success: true, message: 'Report dismissed.' });
 });
 
 export const deleteListingAdmin = asyncHandler(async (req, res) => {

@@ -14,12 +14,26 @@ import {
 } from '../utils/listingHelpers.js';
 
 export const getFacilities = asyncHandler(async (req, res) => {
-  const { category, maxPrice, minCapacity, availability, search, operatorId } =
-    req.query;
+  const {
+    category,
+    maxPrice,
+    minCapacity,
+    availability,
+    search,
+    operatorId,
+    district,
+    village,
+  } = req.query;
   const filter = {};
 
-  if (category && category !== 'All') filter.category = category;
+  if (category && category !== 'All') filter.category = new RegExp(`^${category}$`, 'i');
   if (operatorId) filter.operatorId = operatorId;
+  if (district && district.trim()) {
+    filter['location.district'] = new RegExp(district.trim(), 'i');
+  }
+  if (village && village.trim()) {
+    filter['location.village'] = new RegExp(village.trim(), 'i');
+  }
   if (availability === 'true' || availability === 'false') {
     filter.availability = availability === 'true';
   }

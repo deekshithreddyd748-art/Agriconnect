@@ -46,7 +46,9 @@ export function resolveImageUrl(path) {
   if (!path) return '/images/placeholder.svg';
   if (path.startsWith('http://') || path.startsWith('https://')) return path;
   if (path.startsWith('/uploads/')) {
-    const base = import.meta.env.VITE_ASSET_URL || 'http://localhost:5000';
+    const apiBase = import.meta.env.VITE_API_URL;
+    const derivedOrigin = apiBase ? apiBase.replace(/\/api\/?$/, '') : '';
+    const base = import.meta.env.VITE_ASSET_URL || derivedOrigin || 'http://localhost:5000';
     return `${base}${path}`;
   }
   return path;

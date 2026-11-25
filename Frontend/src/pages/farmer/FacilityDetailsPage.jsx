@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { ArrowLeft, MapPin, Phone, Warehouse, Clock, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, MapPin, Phone, Warehouse, Clock, CheckCircle2, Flag } from 'lucide-react';
 import api, { getErrorMessage } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useLocationContext } from '../../context/LocationContext';
@@ -103,14 +103,36 @@ export default function FacilityDetailsPage() {
     }
   }
 
+  async function handleReport() {
+    const reason = window.prompt('Describe why you are reporting this facility:');
+    if (!reason || !reason.trim()) return;
+    try {
+      await api.post(`/discovery/report/facility/${item._id}`, { reason });
+      toast.success('Listing flagged for admin review.');
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Could not submit report.'));
+    }
+  }
+
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-      <Link
-        to="/facilities"
-        className="inline-flex items-center gap-1.5 text-sm font-semibold text-forest-700 hover:underline"
-      >
-        <ArrowLeft className="w-4 h-4" /> Back to Facilities
-      </Link>
+      <div className="flex items-center justify-between gap-2">
+        <Link
+          to="/facilities"
+          className="inline-flex items-center gap-1.5 text-sm font-semibold text-forest-700 hover:underline"
+        >
+          <ArrowLeft className="w-4 h-4" /> Back to Facilities
+        </Link>
+        {user && (
+          <button
+            type="button"
+            onClick={handleReport}
+            className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-rose-600"
+          >
+            <Flag className="w-3.5 h-3.5" /> Report Listing
+          </button>
+        )}
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-7 space-y-6">

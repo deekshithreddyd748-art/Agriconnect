@@ -46,9 +46,16 @@ export default function ListingFormPage() {
           ? LABOUR_CATEGORIES[0]
           : FACILITY_CATEGORIES[0],
     description: '',
+    skills: '',
+    experience: '',
     price: '',
     pricePerWorker: '',
-    priceUnit: listingType === 'facility' ? 'per ton/day' : listingType === 'labour' ? 'day' : 'hour',
+    priceUnit:
+      listingType === 'facility'
+        ? 'per ton/day'
+        : listingType === 'labour'
+          ? 'day'
+          : 'hour',
     workersAvailable: 5,
     availableDates: '',
     capacity: 100,
@@ -82,6 +89,8 @@ export default function ListingFormPage() {
           title: d.title || '',
           category: d.category || prev.category,
           description: d.description || '',
+          skills: (d.skills || []).join(', '),
+          experience: d.experience || '',
           price: d.price ?? '',
           pricePerWorker: d.pricePerWorker ?? '',
           priceUnit: d.priceUnit || prev.priceUnit,
@@ -162,6 +171,11 @@ export default function ListingFormPage() {
           title: form.title,
           category: form.category,
           description: form.description,
+          skills: form.skills
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean),
+          experience: form.experience,
           workersAvailable: Number(form.workersAvailable),
           pricePerWorker: Number(form.pricePerWorker),
           priceUnit: form.priceUnit,
@@ -257,7 +271,7 @@ export default function ListingFormPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
-                {listingType === 'labour' ? 'Team / Service Title *' : 'Listing Name *'}
+                {listingType === 'labour' ? 'Team / Profile Title *' : 'Listing Name *'}
               </label>
               <input
                 type="text"
@@ -405,7 +419,7 @@ export default function ListingFormPage() {
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Price Per Worker (₹) *
+                  Wage Per Worker (₹) *
                 </label>
                 <input
                   type="number"
@@ -418,7 +432,7 @@ export default function ListingFormPage() {
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Rate Unit
+                  Wage Unit
                 </label>
                 <select
                   value={form.priceUnit}
@@ -430,6 +444,30 @@ export default function ListingFormPage() {
                 </select>
               </div>
               <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Experience
+                </label>
+                <input
+                  type="text"
+                  value={form.experience}
+                  onChange={(e) => updateField('experience', e.target.value)}
+                  placeholder="e.g., 6+ years harvesting & nursery"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-earth-200 text-sm"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Skills (comma-separated)
+                </label>
+                <input
+                  type="text"
+                  value={form.skills}
+                  onChange={(e) => updateField('skills', e.target.value)}
+                  placeholder="Sugarcane Cutting, Paddy Transplanting, Pruning"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-earth-200 text-sm"
+                />
+              </div>
+              <div className="sm:col-span-2">
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
                   Available Dates (comma-separated YYYY-MM-DD)
                 </label>

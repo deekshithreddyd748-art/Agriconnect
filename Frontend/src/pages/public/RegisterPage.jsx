@@ -18,6 +18,7 @@ export default function RegisterPage() {
     register,
     handleSubmit,
     setValue,
+    watch,
     formState: { errors },
   } = useForm({
     defaultValues: {
@@ -28,6 +29,8 @@ export default function RegisterPage() {
       state: 'Maharashtra',
     },
   });
+
+  const passwordValue = watch('password');
 
   function useBrowserGps() {
     if (!navigator.geolocation) {
@@ -124,7 +127,7 @@ export default function RegisterPage() {
               )}
             </div>
 
-            <div>
+            <div className="sm:col-span-2">
               <label className="block text-sm font-medium text-slate-700 mb-1">
                 Email Address *
               </label>
@@ -159,6 +162,27 @@ export default function RegisterPage() {
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
+                Confirm Password *
+              </label>
+              <input
+                type="password"
+                {...register('confirmPassword', {
+                  required: 'Please confirm your password',
+                  validate: (val) =>
+                    val === passwordValue || 'Passwords do not match',
+                })}
+                placeholder="Re-enter password"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-earth-200 text-sm"
+              />
+              {errors.confirmPassword && (
+                <p className="text-xs text-rose-600 mt-1">
+                  {errors.confirmPassword.message}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
                 User Role *
               </label>
               <select
@@ -168,7 +192,7 @@ export default function RegisterPage() {
                 <option value="farmer">Farmer (Book Services)</option>
                 <option value="equipment_owner">Equipment Owner (Rent Machinery)</option>
                 <option value="labour_provider">Labour Provider (Offer Farm Teams)</option>
-                <option value="facility_operator">Facility Operator (Storage / Mills)</option>
+                <option value="facility_operator">Facility Owner (Storage / Mills)</option>
               </select>
             </div>
 

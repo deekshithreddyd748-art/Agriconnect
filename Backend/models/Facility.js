@@ -3,11 +3,19 @@ import mongoose from 'mongoose';
 export const FACILITY_CATEGORIES = [
   'Warehouses',
   'Cold Storage',
+  'Cold storage',
+  'Drying Facilities',
+  'Drying facilities',
   'Grain Drying Units',
-  'Rice Mills',
-  'Flour Mills',
+  'Sorting Facilities',
+  'Sorting facilities',
+  'Grading Facilities',
+  'Grading facilities',
   'Sorting and Grading Units',
   'Packaging Facilities',
+  'Packaging facilities',
+  'Rice Mills',
+  'Flour Mills',
 ];
 
 const facilitySchema = new mongoose.Schema(
@@ -89,6 +97,14 @@ const facilitySchema = new mongoose.Schema(
       district: { type: String, trim: true, default: '' },
       state: { type: String, trim: true, default: '' },
     },
+    isReported: { type: Boolean, default: false },
+    reportReason: { type: String, trim: true, default: '' },
+    reportedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    reportedAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

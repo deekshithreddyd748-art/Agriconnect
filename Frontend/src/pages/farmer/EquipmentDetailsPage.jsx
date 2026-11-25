@@ -8,6 +8,7 @@ import {
   Calendar,
   AlertCircle,
   CheckCircle2,
+  Flag,
 } from 'lucide-react';
 import api, { getErrorMessage } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -112,14 +113,36 @@ export default function EquipmentDetailsPage() {
     }
   }
 
+  async function handleReport() {
+    const reason = window.prompt('Describe why you are reporting this listing:');
+    if (!reason || !reason.trim()) return;
+    try {
+      await api.post(`/discovery/report/equipment/${item._id}`, { reason });
+      toast.success('Listing flagged for admin review.');
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Could not submit report.'));
+    }
+  }
+
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-      <Link
-        to="/machinery"
-        className="inline-flex items-center gap-1.5 text-sm font-semibold text-forest-700 hover:underline"
-      >
-        <ArrowLeft className="w-4 h-4" /> Back to Machinery Marketplace
-      </Link>
+      <div className="flex items-center justify-between gap-2">
+        <Link
+          to="/machinery"
+          className="inline-flex items-center gap-1.5 text-sm font-semibold text-forest-700 hover:underline"
+        >
+          <ArrowLeft className="w-4 h-4" /> Back to Machinery Marketplace
+        </Link>
+        {user && (
+          <button
+            type="button"
+            onClick={handleReport}
+            className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-rose-600"
+          >
+            <Flag className="w-3.5 h-3.5" /> Report Listing
+          </button>
+        )}
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-7 space-y-6">
@@ -223,7 +246,6 @@ export default function EquipmentDetailsPage() {
           )}
         </div>
 
-        {/* Booking Request Form */}
         <div className="lg:col-span-5">
           <div className="bg-white rounded-3xl border border-earth-200 p-6 shadow-sm sticky top-24 space-y-5">
             <h2 className="text-xl font-bold text-forest-900 flex items-center gap-2">

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Sprout, MapPin, Tractor, Users, Warehouse } from 'lucide-react';
+import { Sprout, MapPin, Tractor, Users, Warehouse, Mail, Phone } from 'lucide-react';
 
 export default function Footer() {
   return (
@@ -8,13 +8,13 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="md:col-span-1 space-y-3">
             <div className="flex items-center gap-2">
-              <div className="w-9 h-9 rounded-xl bg-fresh-500 text-white flex items-center justify-center">
+              <div className="w-9 h-9 rounded-xl bg-fresh-500 text-forest-900 flex items-center justify-center">
                 <Sprout className="w-5 h-5" />
               </div>
               <span className="font-bold text-lg text-white">AgriConnect</span>
             </div>
             <p className="text-sm text-forest-200 leading-relaxed">
-              Connecting Farmers. Empowering Agriculture. Hyperlocal discovery for
+              Empowering Farmers. Connecting Resources. Hyperlocal discovery for
               machinery, skilled farm labour, and post-harvest infrastructure.
             </p>
           </div>
@@ -49,7 +49,7 @@ export default function Footer() {
 
           <div>
             <h3 className="text-sm font-semibold uppercase tracking-wider text-white mb-3">
-              Platform
+              Navigation
             </h3>
             <ul className="space-y-2 text-sm text-forest-200">
               <li>
@@ -64,7 +64,17 @@ export default function Footer() {
               </li>
               <li>
                 <Link to="/services" className="hover:text-white">
-                  Service Categories
+                  All Services
+                </Link>
+              </li>
+              <li>
+                <Link to="/register" className="hover:text-white">
+                  Join AgriConnect
+                </Link>
+              </li>
+              <li>
+                <Link to="/login" className="hover:text-white">
+                  Sign In
                 </Link>
               </li>
             </ul>
@@ -72,31 +82,28 @@ export default function Footer() {
 
           <div>
             <h3 className="text-sm font-semibold uppercase tracking-wider text-white mb-3">
-              Get Started
+              Contact Information
             </h3>
-            <ul className="space-y-2 text-sm text-forest-200">
-              <li>
-                <Link to="/register" className="hover:text-white">
-                  Register as Farmer
-                </Link>
+            <ul className="space-y-2.5 text-sm text-forest-200">
+              <li className="flex items-center gap-2">
+                <Mail className="w-4 h-4 text-fresh-500 shrink-0" />
+                <span>support@agriconnect.in</span>
               </li>
-              <li>
-                <Link to="/register" className="hover:text-white">
-                  Become a Service Provider
-                </Link>
+              <li className="flex items-center gap-2">
+                <Phone className="w-4 h-4 text-fresh-500 shrink-0" />
+                <span>+91 1800-123-4567</span>
               </li>
-              <li>
-                <Link to="/login" className="hover:text-white">
-                  Sign In / Demo Accounts
-                </Link>
+              <li className="flex items-start gap-2">
+                <MapPin className="w-4 h-4 text-fresh-500 shrink-0 mt-0.5" />
+                <span>Agro Innovation Hub, Baramati, Pune, Maharashtra</span>
               </li>
             </ul>
           </div>
         </div>
 
         <div className="mt-10 pt-6 border-t border-forest-800 flex flex-col sm:flex-row justify-between items-center gap-3 text-xs text-forest-200">
-          <p>© {new Date().getFullYear()} AgriConnect. Built for Rural Innovation.</p>
-          <p>Hyperlocal Distance Engine powered by Haversine & OpenStreetMap</p>
+          <p>© {new Date().getFullYear()} AgriConnect. Empowering Rural Agriculture.</p>
+          <p>Powered by OpenStreetMap, Leaflet &amp; Haversine Discovery</p>
         </div>
       </div>
     </footer>

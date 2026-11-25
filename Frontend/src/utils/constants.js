@@ -2,13 +2,15 @@ export const EQUIPMENT_CATEGORIES = [
   'Tractors',
   'Rotavators',
   'Harvesters',
+  'Tillers',
+  'Seeders',
   'Seed Drills',
   'Cultivators',
   'Sprayers',
   'Threshers',
-  'Ploughing Equipment',
+  'Ploughs',
   'Water Pumps',
-  'Other Agricultural Equipment',
+  'Other agricultural machinery',
 ];
 
 export const LABOUR_CATEGORIES = [
@@ -24,11 +26,12 @@ export const LABOUR_CATEGORIES = [
 export const FACILITY_CATEGORIES = [
   'Warehouses',
   'Cold Storage',
-  'Grain Drying Units',
+  'Drying Facilities',
+  'Sorting Facilities',
+  'Grading Facilities',
+  'Packaging Facilities',
   'Rice Mills',
   'Flour Mills',
-  'Sorting and Grading Units',
-  'Packaging Facilities',
 ];
 
 export const RADIUS_OPTIONS = [5, 10, 15, 25];
@@ -48,7 +51,7 @@ export const ROLE_LABELS = {
   farmer: 'Farmer',
   equipment_owner: 'Equipment Owner',
   labour_provider: 'Labour Provider',
-  facility_operator: 'Facility Operator',
+  facility_operator: 'Facility Owner',
   admin: 'Administrator',
 };
 
@@ -114,5 +117,5 @@ export const STATUS_BADGES = {
   Accepted: 'bg-emerald-100 text-emerald-800 border-emerald-200',
   Rejected: 'bg-rose-100 text-rose-800 border-rose-200',
   Cancelled: 'bg-slate-100 text-slate-700 border-slate-200',
-  Completed: 'bg-forest-100 text-forest-800 border-forest-200',
+  Completed: 'bg-forest-100 text-forest-700 border-forest-200',
 };

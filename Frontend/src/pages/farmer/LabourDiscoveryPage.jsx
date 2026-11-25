@@ -15,6 +15,7 @@ export default function LabourDiscoveryPage() {
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState('list');
   const [category, setCategory] = useState('All');
+  const [district, setDistrict] = useState('');
   const [minWorkers, setMinWorkers] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
   const [search, setSearch] = useState('');
@@ -25,6 +26,7 @@ export default function LabourDiscoveryPage() {
       .get('/labour', {
         params: {
           category,
+          district,
           minWorkers,
           maxPrice,
           search,
@@ -34,7 +36,7 @@ export default function LabourDiscoveryPage() {
       .then((res) => setItems(res.data.data || []))
       .catch(() => setItems([]))
       .finally(() => setLoading(false));
-  }, [category, minWorkers, maxPrice, search, coords?.lat, coords?.lng, hasCoords, radius]);
+  }, [category, district, minWorkers, maxPrice, search, coords?.lat, coords?.lng, hasCoords, radius]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
@@ -77,14 +79,14 @@ export default function LabourDiscoveryPage() {
 
       <LocationSelector />
 
-      <div className="bg-white rounded-2xl border border-earth-200 p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="bg-white rounded-2xl border border-earth-200 p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
         <div className="relative">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search work type, village..."
+            placeholder="Search skills, village..."
             className="w-full pl-9 pr-3 py-2 rounded-xl border border-earth-200 text-sm"
           />
         </div>
@@ -100,6 +102,13 @@ export default function LabourDiscoveryPage() {
             </option>
           ))}
         </select>
+        <input
+          type="text"
+          value={district}
+          onChange={(e) => setDistrict(e.target.value)}
+          placeholder="Filter by district"
+          className="px-3 py-2 rounded-xl border border-earth-200 text-sm"
+        />
         <input
           type="number"
           min="1"
@@ -154,12 +163,25 @@ export default function LabourDiscoveryPage() {
                 <p className="text-xs text-slate-600 line-clamp-2">
                   {item.description}
                 </p>
+                {item.skills?.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {item.skills.slice(0, 3).map((sk) => (
+                      <span
+                        key={sk}
+                        className="px-2 py-0.5 rounded-md bg-earth-100 text-slate-700 text-[11px] font-medium"
+                      >
+                        {sk}
+                      </span>
+                    ))}
+                  </div>
+                )}
                 <div className="text-xs text-slate-600 space-y-1 pt-1">
                   <div>
                     Coordinator:{' '}
                     <strong className="text-slate-800">
                       {item.providerId?.name || 'Local Provider'}
                     </strong>
+                    {item.experience ? ` · ${item.experience}` : ''}
                   </div>
                   <div>
                     Available Workers:{' '}

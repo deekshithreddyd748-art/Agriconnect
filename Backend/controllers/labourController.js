@@ -12,13 +12,44 @@ import {
   parseMaybeJson,
 } from '../utils/listingHelpers.js';
 
+function normalizeSkills(raw) {
+  if (Array.isArray(raw)) {
+    return raw.map((s) => String(s).trim()).filter(Boolean);
+  }
+  if (typeof raw === 'string') {
+    const parsed = parseMaybeJson(raw, null);
+    if (Array.isArray(parsed)) {
+      return parsed.map((s) => String(s).trim()).filter(Boolean);
+    }
+    return raw
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+  return [];
+}
+
 export const getLabours = asyncHandler(async (req, res) => {
-  const { category, maxPrice, minWorkers, availability, search, providerId } =
-    req.query;
+  const {
+    category,
+    maxPrice,
+    minWorkers,
+    availability,
+    search,
+    providerId,
+    district,
+    village,
+  } = req.query;
   const filter = {};
 
   if (category && category !== 'All') filter.category = category;
   if (providerId) filter.providerId = providerId;
+  if (district && district.trim()) {
+    filter['location.district'] = new RegExp(district.trim(), 'i');
+  }
+  if (village && village.trim()) {
+    filter['location.village'] = new RegExp(village.trim(), 'i');
+  }
   if (availability === 'true' || availability === 'false') {
     filter.availability = availability === 'true';
   }
@@ -40,6 +71,7 @@ export const getLabours = asyncHandler(async (req, res) => {
       { title: regex },
       { category: regex },
       { description: regex },
+      { skills: regex },
       { 'location.village': regex },
       { 'location.district': regex },
     ];
@@ -91,6 +123,8 @@ export const createLabour = asyncHandler(async (req, res) => {
     title,
     category,
     description,
+    skills,
+    experience,
     workersAvailable,
     pricePerWorker,
     priceUnit,
@@ -108,6 +142,8 @@ export const createLabour = asyncHandler(async (req, res) => {
     title: title || `${category} Team`,
     category,
     description,
+    skills: normalizeSkills(skills),
+    experience: experience ? String(experience).trim() : '',
     workersAvailable: Number(workersAvailable),
     pricePerWorker: Number(pricePerWorker),
     priceUnit: priceUnit || 'day',
@@ -132,11 +168,14 @@ export const updateLabour = asyncHandler(async (req, res) => {
   const labour = await Labour.findById(req.params.id);
   assertOwnershipOrAdmin(labour, 'providerId', req.user);
 
-  const updatable = ['title', 'category', 'description', 'priceUnit'];
+  const updatable = ['title', 'category', 'description', 'priceUnit', 'experience'];
   for (const field of updatable) {
     if (req.body[field] !== undefined) {
       labour[field] = req.body[field];
     }
+  }
+  if (req.body.skills !== undefined) {
+    labour.skills = normalizeSkills(req.body.skills);
   }
   if (req.body.workersAvailable !== undefined) {
     labour.workersAvailable = Number(req.body.workersAvailable);

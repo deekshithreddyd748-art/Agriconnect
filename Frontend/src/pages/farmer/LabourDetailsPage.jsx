@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { ArrowLeft, MapPin, Phone, Users, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, MapPin, Phone, Users, CheckCircle2, Flag } from 'lucide-react';
 import api, { getErrorMessage } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useLocationContext } from '../../context/LocationContext';
@@ -102,14 +102,36 @@ export default function LabourDetailsPage() {
     }
   }
 
+  async function handleReport() {
+    const reason = window.prompt('Describe why you are reporting this listing:');
+    if (!reason || !reason.trim()) return;
+    try {
+      await api.post(`/discovery/report/labour/${item._id}`, { reason });
+      toast.success('Listing flagged for admin review.');
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Could not submit report.'));
+    }
+  }
+
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-      <Link
-        to="/labour"
-        className="inline-flex items-center gap-1.5 text-sm font-semibold text-forest-700 hover:underline"
-      >
-        <ArrowLeft className="w-4 h-4" /> Back to Labour Discovery
-      </Link>
+      <div className="flex items-center justify-between gap-2">
+        <Link
+          to="/labour"
+          className="inline-flex items-center gap-1.5 text-sm font-semibold text-forest-700 hover:underline"
+        >
+          <ArrowLeft className="w-4 h-4" /> Back to Labour Discovery
+        </Link>
+        {user && (
+          <button
+            type="button"
+            onClick={handleReport}
+            className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-rose-600"
+          >
+            <Flag className="w-3.5 h-3.5" /> Report Listing
+          </button>
+        )}
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-7 space-y-6">
@@ -125,6 +147,28 @@ export default function LabourDetailsPage() {
               {item.title || `${item.category} Team`}
             </h1>
             <p className="text-sm text-slate-600 leading-relaxed">{item.description}</p>
+
+            {(item.skills?.length > 0 || item.experience) && (
+              <div className="p-4 rounded-2xl bg-earth-50 border border-earth-200 space-y-2">
+                {item.experience && (
+                  <div className="text-xs text-slate-700">
+                    Experience: <strong>{item.experience}</strong>
+                  </div>
+                )}
+                {item.skills?.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {item.skills.map((sk) => (
+                      <span
+                        key={sk}
+                        className="px-2.5 py-1 rounded-lg bg-white border border-earth-200 text-xs font-semibold text-forest-800"
+                      >
+                        {sk}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="grid grid-cols-3 gap-3">
               <div className="p-3 rounded-xl bg-earth-50 border border-earth-200">

@@ -4,12 +4,16 @@ export const EQUIPMENT_CATEGORIES = [
   'Tractors',
   'Rotavators',
   'Harvesters',
+  'Tillers',
+  'Seeders',
   'Seed Drills',
   'Cultivators',
   'Sprayers',
   'Threshers',
+  'Ploughs',
   'Ploughing Equipment',
   'Water Pumps',
+  'Other agricultural machinery',
   'Other Agricultural Equipment',
 ];
 
@@ -76,6 +80,14 @@ const equipmentSchema = new mongoose.Schema(
       horsepower: { type: String, trim: true, default: '' },
       year: { type: String, trim: true, default: '' },
     },
+    isReported: { type: Boolean, default: false },
+    reportReason: { type: String, trim: true, default: '' },
+    reportedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    reportedAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

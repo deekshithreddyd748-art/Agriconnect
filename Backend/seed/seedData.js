@@ -190,10 +190,10 @@ export async function ensureDemoData({ forceReset = false } = {}) {
       },
     },
     {
-      name: '11-Row Precision Seed Cum Fertilizer Drill',
-      category: 'Seed Drills',
+      name: '11-Row Precision Seed Cum Fertilizer Seeder',
+      category: 'Seeders',
       description:
-        'Zero-till calibrated seed drill ensuring uniform row spacing and simultaneous basal fertilizer placement.',
+        'Zero-till calibrated seeder ensuring uniform row spacing and simultaneous basal fertilizer placement.',
       images: ['/images/seed-drill.svg'],
       ownerId: owner2._id,
       price: 1600,
@@ -261,6 +261,8 @@ export async function ensureDemoData({ forceReset = false } = {}) {
       category: 'Harvesting',
       description:
         'Experienced 14-member harvesting team skilled in sugarcane cutting, wheat bundling, and clean crop handling.',
+      skills: ['Sugarcane Cutting', 'Wheat Harvesting', 'Crop Bundling', 'Loading'],
+      experience: '8+ years rural team experience',
       workersAvailable: 14,
       pricePerWorker: 550,
       priceUnit: 'day',
@@ -282,6 +284,8 @@ export async function ensureDemoData({ forceReset = false } = {}) {
       category: 'Transplantation',
       description:
         'Trained 10-worker horticulture crew specializing in uniform onion, tomato, and paddy seedling transplantation.',
+      skills: ['Onion Nursery Transplanting', 'Paddy Planting', 'Bed Preparation'],
+      experience: '6 years horticulture specialization',
       workersAvailable: 10,
       pricePerWorker: 480,
       priceUnit: 'day',
@@ -303,6 +307,8 @@ export async function ensureDemoData({ forceReset = false } = {}) {
       category: 'Weeding',
       description:
         '8 skilled farm workers equipped for manual inter-row weeding, mulching sheet laying, and drip line checks.',
+      skills: ['Manual Weeding', 'Mulching Film Laying', 'Drip Flushing'],
+      experience: '5 years orchard & vegetable care',
       workersAvailable: 8,
       pricePerWorker: 450,
       priceUnit: 'day',
@@ -374,7 +380,7 @@ export async function ensureDemoData({ forceReset = false } = {}) {
     {
       operatorId: facilityOperator._id,
       name: 'Indrayani Solar Grain Drying & Grading Unit',
-      category: 'Grain Drying Units',
+      category: 'Drying Facilities',
       description:
         'Hybrid solar-biomass batch grain dryer and optical sorter reducing post-harvest moisture to safe 12% storage levels.',
       images: ['/images/grain-dryer.svg'],

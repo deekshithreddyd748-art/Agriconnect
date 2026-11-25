@@ -39,6 +39,7 @@ export const register = asyncHandler(async (req, res) => {
     email,
     phone,
     password,
+    confirmPassword,
     role = 'farmer',
     language = 'English',
     village = '',
@@ -47,7 +48,12 @@ export const register = asyncHandler(async (req, res) => {
     location,
   } = req.body;
 
-  if (!SELF_REGISTER_ROLES.includes(role)) {
+  if (confirmPassword !== undefined && confirmPassword !== password) {
+    throw new AppError('Password and confirm password do not match.', 400);
+  }
+
+  const normalizedRole = role === 'facility_owner' ? 'facility_operator' : role;
+  if (!SELF_REGISTER_ROLES.includes(normalizedRole)) {
     throw new AppError('Invalid user role selected for registration.', 400);
   }
 
@@ -67,7 +73,7 @@ export const register = asyncHandler(async (req, res) => {
     email,
     phone,
     password,
-    role,
+    role: normalizedRole,
     language,
     village,
     district,

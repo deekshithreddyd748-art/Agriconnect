@@ -34,6 +34,15 @@ const labourSchema = new mongoose.Schema(
       trim: true,
       maxlength: 2000,
     },
+    skills: {
+      type: [String],
+      default: [],
+    },
+    experience: {
+      type: String,
+      trim: true,
+      default: '',
+    },
     workersAvailable: {
       type: Number,
       required: [true, 'Number of available workers is required'],
@@ -71,6 +80,14 @@ const labourSchema = new mongoose.Schema(
       min: 1,
       max: 200,
     },
+    isReported: { type: Boolean, default: false },
+    reportReason: { type: String, trim: true, default: '' },
+    reportedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    reportedAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

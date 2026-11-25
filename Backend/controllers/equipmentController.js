@@ -14,11 +14,18 @@ import {
 } from '../utils/listingHelpers.js';
 
 export const getEquipments = asyncHandler(async (req, res) => {
-  const { category, maxPrice, availability, search, ownerId } = req.query;
+  const { category, maxPrice, availability, search, ownerId, district, village } =
+    req.query;
   const filter = {};
 
   if (category && category !== 'All') filter.category = category;
   if (ownerId) filter.ownerId = ownerId;
+  if (district && district.trim()) {
+    filter['location.district'] = new RegExp(district.trim(), 'i');
+  }
+  if (village && village.trim()) {
+    filter['location.village'] = new RegExp(village.trim(), 'i');
+  }
   if (availability === 'true' || availability === 'false') {
     filter.availability = availability === 'true';
   }

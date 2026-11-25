@@ -19,6 +19,7 @@ export default function FacilityDiscoveryPage() {
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState('list');
   const [category, setCategory] = useState('All');
+  const [district, setDistrict] = useState('');
   const [minCapacity, setMinCapacity] = useState('');
   const [search, setSearch] = useState('');
 
@@ -28,6 +29,7 @@ export default function FacilityDiscoveryPage() {
       .get('/facilities', {
         params: {
           category,
+          district,
           minCapacity,
           search,
           ...(hasCoords ? { lat: coords.lat, lng: coords.lng, radius } : {}),
@@ -36,7 +38,7 @@ export default function FacilityDiscoveryPage() {
       .then((res) => setItems(res.data.data || []))
       .catch(() => setItems([]))
       .finally(() => setLoading(false));
-  }, [category, minCapacity, search, coords?.lat, coords?.lng, hasCoords, radius]);
+  }, [category, district, minCapacity, search, coords?.lat, coords?.lng, hasCoords, radius]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
@@ -79,7 +81,7 @@ export default function FacilityDiscoveryPage() {
 
       <LocationSelector />
 
-      <div className="bg-white rounded-2xl border border-earth-200 p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="bg-white rounded-2xl border border-earth-200 p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="relative">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
           <input
@@ -102,6 +104,13 @@ export default function FacilityDiscoveryPage() {
             </option>
           ))}
         </select>
+        <input
+          type="text"
+          value={district}
+          onChange={(e) => setDistrict(e.target.value)}
+          placeholder="Filter by district"
+          className="px-3 py-2 rounded-xl border border-earth-200 text-sm"
+        />
         <input
           type="number"
           min="0"
