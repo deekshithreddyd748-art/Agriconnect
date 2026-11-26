@@ -124,8 +124,13 @@ export default function Navbar() {
                   >
                     <UserIcon className="w-4 h-4 text-forest-700" />
                     <div className="text-left leading-tight">
-                      <div className="font-semibold text-slate-800 text-xs">
+                      <div className="font-semibold text-slate-800 text-xs flex items-center gap-1">
                         {user.name.split(' ')[0]}
+                        {user.isGuest && (
+                          <span className="px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 text-[9px] font-extrabold">
+                            DEMO
+                          </span>
+                        )}
                       </div>
                       <div className="text-[10px] text-slate-500">
                         {user.role ? t(`roles.${user.role}`, user.role) : t('auth.chooseRoleShort')}
@@ -134,8 +139,8 @@ export default function Navbar() {
                   </Link>
                   <button
                     onClick={handleLogout}
-                    title={t('nav.logout')}
-                    aria-label={t('nav.logout')}
+                    title={user.isGuest ? 'Exit Demo' : t('nav.logout')}
+                    aria-label={user.isGuest ? 'Exit Demo' : t('nav.logout')}
                     className="p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors"
                   >
                     <LogOut className="w-4 h-4" />
@@ -247,7 +252,7 @@ export default function Navbar() {
                     onClick={handleLogout}
                     className="min-h-[44px] rounded-xl bg-rose-50 text-rose-700 text-sm font-medium"
                   >
-                    {t('nav.logout')}
+                    {user?.isGuest ? 'Exit Demo' : t('nav.logout')}
                   </button>
                 </div>
               </>

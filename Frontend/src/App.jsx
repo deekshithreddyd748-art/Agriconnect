@@ -3,6 +3,7 @@ import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
 import { LocationProvider } from './context/LocationContext';
 import Navbar from './components/Navbar';
+import DemoModeBanner from './components/DemoModeBanner';
 import Footer from './components/Footer';
 import ProtectedRoute from './components/ProtectedRoute';
 import { PROVIDER_ROLES } from './utils/constants';
@@ -45,6 +46,7 @@ export default function App() {
         <BrowserRouter>
           <div className="min-h-screen flex flex-col bg-earth-50">
             <Navbar />
+            <DemoModeBanner />
             <main className="flex-1">
               <Routes>
                 {/* Public Routes */}

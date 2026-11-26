@@ -21,8 +21,13 @@ export default function ProtectedRoute({ children, allowedRoles }) {
     return <Navigate to="/select-role" state={{ from: location }} replace />;
   }
 
+  // Strictly block Guest / Demo users from Admin routes
+  if (user.isGuest && allowedRoles?.length === 1 && allowedRoles[0] === 'admin') {
+    return <Navigate to="/farmer/dashboard" replace />;
+  }
+
   if (allowedRoles && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={user.role === 'farmer' ? '/farmer/dashboard' : '/provider/dashboard'} replace />;
   }
 
   return children;

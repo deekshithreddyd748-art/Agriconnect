@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   Tractor,
@@ -15,14 +15,23 @@ import {
   CalendarCheck,
   Quote,
   PlayCircle,
+  Sparkles,
 } from 'lucide-react';
 import api from '../../services/api';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
 import { formatNumber } from '../../utils/distance';
+import { useAuth } from '../../context/AuthContext';
 
 export default function LandingPage() {
   const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
+  const { enterGuestMode } = useAuth();
   const [stats, setStats] = useState(null);
+
+  const handleExploreDemo = () => {
+    enterGuestMode('farmer');
+    navigate('/farmer/dashboard');
+  };
 
   useEffect(() => {
     api
@@ -107,6 +116,14 @@ export default function LandingPage() {
                 <Warehouse className="w-4 h-4" />
                 {t('landing.exploreFacilities')}
               </Link>
+              <button
+                type="button"
+                onClick={handleExploreDemo}
+                className="inline-flex items-center gap-2 px-5 min-h-[48px] rounded-xl bg-amber-400 hover:bg-amber-300 text-forest-900 font-bold text-sm shadow-sm transition-colors cursor-pointer"
+              >
+                <Sparkles className="w-4 h-4" />
+                Explore Demo (Guest)
+              </button>
               <Link
                 to="/register"
                 className="inline-flex items-center gap-2 px-5 min-h-[48px] rounded-xl border border-fresh-500 text-forest-100 hover:bg-fresh-500/20 font-semibold text-sm transition-colors"
