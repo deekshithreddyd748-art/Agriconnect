@@ -1,6 +1,7 @@
 import express from 'express';
 import { body } from 'express-validator';
 import {
+  cancelBooking,
   createBooking,
   getBookingById,
   getMyBookings,
@@ -21,10 +22,10 @@ router.post(
   authorize('farmer', 'admin'),
   [
     body('serviceType')
+      .optional()
       .isIn(['equipment', 'labour', 'facility'])
       .withMessage('Valid serviceType is required'),
-    body('serviceId').notEmpty().withMessage('serviceId is required'),
-    body('bookingDate').trim().notEmpty().withMessage('Booking date is required'),
+    body('bookingDate').optional().trim(),
   ],
   validateRequest,
   createBooking
@@ -40,5 +41,7 @@ router.patch(
   validateRequest,
   updateBookingStatus
 );
+
+router.patch('/:id/cancel', cancelBooking);
 
 export default router;

@@ -21,19 +21,23 @@ router.post(
   authorize('labour_provider', 'admin'),
   [
     body('category').trim().notEmpty().withMessage('Labour category is required'),
-    body('description').trim().notEmpty().withMessage('Description is required'),
     body('workersAvailable')
+      .optional()
       .isInt({ min: 1 })
       .withMessage('At least 1 available worker is required'),
-    body('pricePerWorker')
-      .isFloat({ min: 0 })
-      .withMessage('Valid price per worker is required'),
   ],
   validateRequest,
   createLabour
 );
 
 router.put(
+  '/:id',
+  protect,
+  authorize('labour_provider', 'admin'),
+  updateLabour
+);
+
+router.patch(
   '/:id',
   protect,
   authorize('labour_provider', 'admin'),

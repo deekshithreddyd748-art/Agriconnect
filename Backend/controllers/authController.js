@@ -1,32 +1,14 @@
-import User from '../models/User.js';
 import { AppError, asyncHandler } from '../middleware/errorHandler.js';
+import { getSupabaseClient } from '../services/supabaseClient.js';
+import { formatProfileRow, mapSupabaseError } from '../services/supabaseMappers.js';
 import { normalizeLocation } from '../utils/listingHelpers.js';
-import { getAuthCookieOptions } from './profileController.js';
+import {
+  getAuthCookieOptions,
+  normalizeFullName,
+} from './profileController.js';
 
-function formatUser(user, profileId = null) {
-  return {
-    _id: user._id,
-    profileId: profileId || user.supabaseProfileId || null,
-    name: user.name,
-    email: user.email || null,
-    phone: user.phone,
-    mobileNumber: user.mobileNumber,
-    role: user.pendingRoleSelection ? null : user.role,
-    language: user.language,
-    village: user.village,
-    district: user.district,
-    state: user.state,
-    primaryCrop: user.primaryCrop,
-    farmSize: user.farmSize,
-    farmSizeUnit: user.farmSizeUnit || 'acres',
-    skills: user.skills,
-    experience: user.experience,
-    availability: user.availability,
-    location: user.location,
-    isActive: user.isActive,
-    createdAt: user.createdAt,
-  };
-}
+const PROFILE_COLUMNS =
+  'id, full_name, mobile_number, email, role, preferred_language, village, taluk, district, state, address, latitude, longitude, primary_crop, farm_size, farm_size_unit, profile_image, is_active, created_at, updated_at';
 
 export const logoutUser = asyncHandler(async (_req, res) => {
   res.clearCookie('agriconnect_token', {
@@ -42,72 +24,88 @@ export const logoutUser = asyncHandler(async (_req, res) => {
 export const getMe = asyncHandler(async (req, res) => {
   res.json({
     success: true,
-    user: formatUser(req.user, req.profileId),
+    user: req.user,
   });
 });
 
 export const updateProfile = asyncHandler(async (req, res) => {
   const {
     name,
-    phone,
+    full_name,
     language,
+    preferred_language,
     village,
+    taluk,
     district,
     state,
     primaryCrop,
+    primary_crop,
     farmSize,
+    farm_size,
     farmSizeUnit,
-    skills,
-    experience,
-    availability,
+    farm_size_unit,
     location,
-  } = req.body;
+  } = req.body || {};
 
-  const user = await User.findById(req.user._id);
-  if (!user) {
-    throw new AppError('User not found.', 404);
-  }
+  const supabase = getSupabaseClient();
+  const updates = {};
 
-  if (name !== undefined && String(name).trim().length >= 2) {
-    user.name = String(name).trim();
+  if ((name ?? full_name) !== undefined) {
+    updates.full_name = normalizeFullName(name ?? full_name);
   }
-  if (phone !== undefined) user.phone = phone;
-  if (language !== undefined) user.language = language;
-  if (village !== undefined) user.village = village;
-  if (district !== undefined) user.district = district;
-  if (state !== undefined) user.state = state;
-  if (primaryCrop !== undefined) user.primaryCrop = primaryCrop;
-  if (farmSize !== undefined) {
-    user.farmSize = farmSize === '' || farmSize === null ? null : Number(farmSize);
+  if ((preferred_language ?? language) !== undefined) {
+    updates.preferred_language = String(preferred_language ?? language).trim() || 'en';
   }
-  if (farmSizeUnit !== undefined && ['acres', 'hectares'].includes(farmSizeUnit)) {
-    user.farmSizeUnit = farmSizeUnit;
+  if (village !== undefined) updates.village = String(village).trim();
+  if (taluk !== undefined) updates.taluk = String(taluk).trim();
+  if (district !== undefined) updates.district = String(district).trim();
+  if (state !== undefined) updates.state = String(state).trim();
+  if ((primary_crop ?? primaryCrop) !== undefined) {
+    updates.primary_crop = String(primary_crop ?? primaryCrop ?? '').trim();
   }
-  if (experience !== undefined) user.experience = experience;
-  if (availability !== undefined) user.availability = availability;
-
-  if (skills !== undefined) {
-    user.skills = Array.isArray(skills)
-      ? skills.map((s) => String(s).trim()).filter(Boolean)
-      : String(skills)
-          .split(',')
-          .map((s) => s.trim())
-          .filter(Boolean);
+  if ((farm_size ?? farmSize) !== undefined) {
+    const raw = farm_size ?? farmSize;
+    if (raw === '' || raw === null) {
+      updates.farm_size = null;
+    } else {
+      const n = Number(raw);
+      if (!Number.isFinite(n) || n < 0) {
+        throw new AppError('Farm size cannot be negative.', 400);
+      }
+      updates.farm_size = n;
+    }
+  }
+  const unit = farm_size_unit ?? farmSizeUnit;
+  if (unit && ['acres', 'hectares'].includes(unit)) {
+    updates.farm_size_unit = unit;
   }
 
   if (location) {
     const normalizedLoc = normalizeLocation(location, {
-      village: village ?? user.village,
-      district: district ?? user.district,
-      state: state ?? user.state,
+      village: village ?? req.user.village,
+      district: district ?? req.user.district,
+      state: state ?? req.user.state,
+      location: req.user.location,
     });
-    user.location = normalizedLoc;
+    updates.latitude = normalizedLoc.lat;
+    updates.longitude = normalizedLoc.lng;
+    updates.address = normalizedLoc.address;
+    if (normalizedLoc.village) updates.village = normalizedLoc.village;
+    if (normalizedLoc.district) updates.district = normalizedLoc.district;
+    if (normalizedLoc.state) updates.state = normalizedLoc.state;
   }
 
-  await user.save();
+  const { data: updated, error } = await supabase
+    .from('profiles')
+    .update(updates)
+    .eq('id', req.user.id)
+    .select(PROFILE_COLUMNS)
+    .single();
+
+  if (error) throw mapSupabaseError(error, 'Failed to update profile.');
 
   res.json({
     success: true,
-    user: formatUser(user, req.profileId),
+    user: formatProfileRow(updated, { includePrivate: true }),
   });
 });

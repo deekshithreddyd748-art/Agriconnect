@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Search, MapPin, List, Map as MapIcon, Tractor } from 'lucide-react';
-import api from '../../services/api';
+import api, { getErrorMessage } from '../../services/api';
 import { useLocationContext } from '../../context/LocationContext';
 import LocationSelector from '../../components/LocationSelector';
 import ServiceMap from '../../components/ServiceMap';
+import FavouriteButton from '../../components/FavouriteButton';
 import { AvailabilityBadge } from '../../components/StatusBadge';
 import { EQUIPMENT_CATEGORIES } from '../../utils/constants';
 import {
@@ -19,6 +20,9 @@ export default function MachineryMarketplace() {
   const { coords, hasCoords, radius, regionFilter } = useLocationContext();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [viewMode, setViewMode] = useState('list');
   const [category, setCategory] = useState('All');
   const [district, setDistrict] = useState('');
@@ -26,8 +30,9 @@ export default function MachineryMarketplace() {
   const [availability, setAvailability] = useState('');
   const [search, setSearch] = useState('');
 
-  useEffect(() => {
+  function fetchEquipments() {
     setLoading(true);
+    setErrorMsg('');
     const effectiveDistrict = district || (!hasCoords ? regionFilter.district : '');
     const params = {
       category,
@@ -35,19 +40,34 @@ export default function MachineryMarketplace() {
       search,
       maxPrice,
       availability,
+      page,
+      limit: 12,
       ...(hasCoords ? { lat: coords.lat, lng: coords.lng, radius } : {}),
     };
     api
       .get('/equipment', { params })
-      .then((res) => setItems(res.data.data || []))
-      .catch(() => setItems([]))
+      .then((res) => {
+        setItems(res.data.data || []);
+        setTotalPages(res.data.totalPages || 1);
+      })
+      .catch((err) => {
+        setItems([]);
+        setErrorMsg(
+          getErrorMessage(err, t('marketplace.loadError', 'We could not load the services. Please try again.'))
+        );
+      })
       .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    fetchEquipments();
   }, [
     category,
     district,
     maxPrice,
     availability,
     search,
+    page,
     coords?.lat,
     coords?.lng,
     hasCoords,
@@ -154,6 +174,17 @@ export default function MachineryMarketplace() {
         <div className="py-16 text-center text-sm text-slate-500">
           {t('common.loading')}
         </div>
+      ) : errorMsg ? (
+        <div className="bg-rose-50 border border-rose-200 rounded-2xl p-8 text-center space-y-3">
+          <p className="font-semibold text-rose-800 text-sm">{errorMsg}</p>
+          <button
+            type="button"
+            onClick={fetchEquipments}
+            className="px-4 py-2 rounded-xl bg-rose-700 text-white text-xs font-bold hover:bg-rose-800"
+          >
+            {t('common.retry')}
+          </button>
+        </div>
       ) : viewMode === 'map' ? (
         <ServiceMap
           items={items}
@@ -226,15 +257,42 @@ export default function MachineryMarketplace() {
                   </span>
                   <span className="text-xs text-slate-500"> / {item.priceUnit}</span>
                 </div>
-                <Link
-                  to={`/machinery/${item._id}`}
-                  className="px-4 py-2 rounded-xl bg-forest-700 hover:bg-forest-800 text-white text-xs font-semibold"
-                >
-                  {item.availability ? t('common.bookNow') : t('common.viewDetails')}
-                </Link>
+                <div className="flex items-center gap-2">
+                  <FavouriteButton listingType="equipment" listingId={item._id} />
+                  <Link
+                    to={`/machinery/${item._id}`}
+                    className="px-4 py-2 rounded-xl bg-forest-700 hover:bg-forest-800 text-white text-xs font-semibold"
+                  >
+                    {item.availability ? t('common.bookNow') : t('common.viewDetails')}
+                  </Link>
+                </div>
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {!loading && totalPages > 1 && viewMode === 'list' && (
+        <div className="flex items-center justify-center gap-3 pt-2">
+          <button
+            type="button"
+            disabled={page <= 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            className="px-4 min-h-[42px] rounded-xl border border-earth-200 bg-white text-sm font-semibold disabled:opacity-50"
+          >
+            {t('common.back')}
+          </button>
+          <span className="text-xs font-semibold text-slate-600">
+            {page} / {totalPages}
+          </span>
+          <button
+            type="button"
+            disabled={page >= totalPages}
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            className="px-4 min-h-[42px] rounded-xl border border-earth-200 bg-white text-sm font-semibold disabled:opacity-50"
+          >
+            {t('common.continue')}
+          </button>
         </div>
       )}
     </div>

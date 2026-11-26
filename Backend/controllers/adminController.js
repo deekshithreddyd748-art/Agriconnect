@@ -1,176 +1,211 @@
-import User from '../models/User.js';
-import Equipment from '../models/Equipment.js';
-import Labour from '../models/Labour.js';
-import Facility from '../models/Facility.js';
-import Booking, { BOOKING_STATUSES } from '../models/Booking.js';
 import { AppError, asyncHandler } from '../middleware/errorHandler.js';
+import { getSupabaseClient } from '../services/supabaseClient.js';
+import {
+  assertValidUuid,
+  formatBookingRow,
+  formatProfileRow,
+  mapSupabaseError,
+} from '../services/supabaseMappers.js';
 
-const LISTING_MODELS = {
-  equipment: Equipment,
-  labour: Labour,
-  facility: Facility,
+const BOOKING_STATUSES = ['Pending', 'Accepted', 'Rejected', 'Cancelled', 'Completed'];
+
+const LISTING_TABLES = {
+  equipment: 'equipment_listings',
+  labour: 'labour_profiles',
+  facility: 'facility_listings',
 };
 
 export const getAdminOverview = asyncHandler(async (_req, res) => {
+  const supabase = getSupabaseClient();
+
   const [
-    totalUsers,
-    totalFarmers,
-    equipmentOwners,
-    labourProviders,
-    facilityOperators,
-    totalEquipment,
-    totalLabour,
-    totalFacilities,
-    reportedEquipment,
-    reportedLabour,
-    reportedFacilities,
-    totalBookings,
-    statusAggregation,
-    recentBookings,
-    recentUsers,
+    usersRes,
+    equipmentsRes,
+    laboursRes,
+    facilitiesRes,
+    bookingsRes,
   ] = await Promise.all([
-    User.countDocuments({}),
-    User.countDocuments({ role: 'farmer' }),
-    User.countDocuments({ role: 'equipment_owner' }),
-    User.countDocuments({ role: 'labour_provider' }),
-    User.countDocuments({ role: 'facility_operator' }),
-    Equipment.countDocuments({}),
-    Labour.countDocuments({}),
-    Facility.countDocuments({}),
-    Equipment.countDocuments({ isReported: true }),
-    Labour.countDocuments({ isReported: true }),
-    Facility.countDocuments({ isReported: true }),
-    Booking.countDocuments({}),
-    Booking.aggregate([{ $group: { _id: '$status', count: { $sum: 1 } } }]),
-    Booking.find({})
-      .populate('farmerId', 'name')
-      .populate('providerId', 'name')
-      .sort({ createdAt: -1 })
-      .limit(8)
-      .lean(),
-    User.find({}).select('-password').sort({ createdAt: -1 }).limit(5).lean(),
+    supabase.from('profiles').select('*').order('created_at', { ascending: false }),
+    supabase.from('equipment_listings').select('id, is_reported'),
+    supabase.from('labour_profiles').select('id, is_reported'),
+    supabase.from('facility_listings').select('id, is_reported'),
+    supabase
+      .from('bookings')
+      .select('*, farmer:profiles!bookings_farmer_id_fkey(id, full_name), provider:profiles!bookings_provider_id_fkey(id, full_name)')
+      .order('created_at', { ascending: false }),
   ]);
 
-  const statusMap = Object.fromEntries(BOOKING_STATUSES.map((s) => [s, 0]));
-  for (const row of statusAggregation) {
-    statusMap[row._id] = row.count;
-  }
+  const err =
+    usersRes.error ||
+    equipmentsRes.error ||
+    laboursRes.error ||
+    facilitiesRes.error ||
+    bookingsRes.error;
+  if (err) throw mapSupabaseError(err, 'Could not load admin overview.');
 
-  const bookingStatusBreakdown = BOOKING_STATUSES.map((status) => ({
-    status,
-    count: statusMap[status] || 0,
-  }));
+  const users = usersRes.data || [];
+  const equipments = equipmentsRes.data || [];
+  const labours = laboursRes.data || [];
+  const facilities = facilitiesRes.data || [];
+  const bookings = bookingsRes.data || [];
+
+  const statusMap = Object.fromEntries(BOOKING_STATUSES.map((s) => [s, 0]));
+  bookings.forEach((b) => {
+    if (statusMap[b.status] !== undefined) statusMap[b.status] += 1;
+  });
+
+  const equipmentOwners = users.filter((u) => u.role === 'equipment_owner').length;
+  const labourProviders = users.filter((u) => u.role === 'labour_provider').length;
+  const facilityOperators = users.filter((u) => u.role === 'facility_operator').length;
 
   res.json({
     success: true,
     data: {
-      totalUsers,
-      totalFarmers,
+      totalUsers: users.length,
+      totalFarmers: users.filter((u) => u.role === 'farmer').length,
       totalProviders: equipmentOwners + labourProviders + facilityOperators,
       providerBreakdown: {
         equipmentOwners,
         labourProviders,
         facilityOperators,
       },
-      totalEquipment,
-      totalLabour,
-      totalFacilities,
-      reportedListingsCount: reportedEquipment + reportedLabour + reportedFacilities,
-      totalBookings,
-      bookingStatusBreakdown,
-      recentBookings,
-      recentUsers,
+      totalEquipment: equipments.length,
+      totalLabour: labours.length,
+      totalFacilities: facilities.length,
+      reportedListingsCount:
+        equipments.filter((e) => e.is_reported).length +
+        labours.filter((l) => l.is_reported).length +
+        facilities.filter((f) => f.is_reported).length,
+      totalBookings: bookings.length,
+      bookingStatusBreakdown: BOOKING_STATUSES.map((status) => ({
+        status,
+        count: statusMap[status] || 0,
+      })),
+      recentBookings: bookings.slice(0, 8).map(formatBookingRow),
+      recentUsers: users.slice(0, 5).map((u) => formatProfileRow(u, { includePrivate: true })),
     },
   });
 });
 
 export const getAllUsers = asyncHandler(async (_req, res) => {
-  const users = await User.find({}).select('-password').sort({ createdAt: -1 });
-  res.json({ success: true, data: users });
+  const supabase = getSupabaseClient();
+  const { data: rows, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) throw mapSupabaseError(error, 'Could not load users.');
+  res.json({
+    success: true,
+    data: (rows || []).map((r) => formatProfileRow(r, { includePrivate: true })),
+  });
 });
 
 export const toggleUserStatus = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.params.id).select('-password');
+  const id = assertValidUuid(req.params.id, 'user id');
+  const supabase = getSupabaseClient();
+
+  const { data: user, error: fetchErr } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (fetchErr) throw mapSupabaseError(fetchErr, 'Failed to look up profile.');
   if (!user) throw new AppError('User not found.', 404);
   if (user.role === 'admin') {
     throw new AppError('Admin accounts cannot be deactivated here.', 400);
   }
-  user.isActive = !user.isActive;
-  await user.save();
-  res.json({ success: true, data: user });
+
+  const { data: updated, error: updErr } = await supabase
+    .from('profiles')
+    .update({ is_active: !user.is_active })
+    .eq('id', id)
+    .select('*')
+    .single();
+
+  if (updErr) throw mapSupabaseError(updErr, 'Could not update user status.');
+  res.json({ success: true, data: formatProfileRow(updated, { includePrivate: true }) });
 });
 
 export const deleteUser = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.params.id);
+  const id = assertValidUuid(req.params.id, 'user id');
+  const supabase = getSupabaseClient();
+
+  const { data: user, error: fetchErr } = await supabase
+    .from('profiles')
+    .select('id, role')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (fetchErr) throw mapSupabaseError(fetchErr, 'Failed to look up profile.');
   if (!user) throw new AppError('User not found.', 404);
   if (user.role === 'admin') {
     throw new AppError('Admin accounts cannot be deleted.', 400);
   }
-  await user.deleteOne();
+
+  const { error: delErr } = await supabase.from('profiles').delete().eq('id', id);
+  if (delErr) throw mapSupabaseError(delErr, 'Could not remove user.');
   res.json({ success: true, message: 'User removed.' });
 });
 
 export const getAllListingsAdmin = asyncHandler(async (_req, res) => {
-  const [equipments, labours, facilities] = await Promise.all([
-    Equipment.find({})
-      .populate('ownerId', 'name email')
-      .populate('reportedBy', 'name email')
-      .sort({ createdAt: -1 })
-      .lean(),
-    Labour.find({})
-      .populate('providerId', 'name email')
-      .populate('reportedBy', 'name email')
-      .sort({ createdAt: -1 })
-      .lean(),
-    Facility.find({})
-      .populate('operatorId', 'name email')
-      .populate('reportedBy', 'name email')
-      .sort({ createdAt: -1 })
-      .lean(),
+  const supabase = getSupabaseClient();
+
+  const [eqRes, lbRes, fcRes] = await Promise.all([
+    supabase
+      .from('equipment_listings')
+      .select('*, owner:profiles!equipment_listings_owner_id_fkey(id, full_name)')
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('labour_profiles')
+      .select('*, provider:profiles!labour_profiles_provider_id_fkey(id, full_name)')
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('facility_listings')
+      .select('*, owner:profiles!facility_listings_owner_id_fkey(id, full_name)')
+      .order('created_at', { ascending: false }),
   ]);
 
+  const err = eqRes.error || lbRes.error || fcRes.error;
+  if (err) throw mapSupabaseError(err, 'Could not load admin listings.');
+
   const unified = [
-    ...equipments.map((e) => ({
-      _id: e._id,
+    ...(eqRes.data || []).map((e) => ({
+      _id: e.id,
       type: 'equipment',
-      title: e.name,
-      category: e.category,
-      ownerName: e.ownerId?.name || 'Unknown',
-      availability: e.availability,
-      isReported: Boolean(e.isReported),
-      reportReason: e.reportReason || '',
-      reportedByName: e.reportedBy?.name || '',
-      reportedAt: e.reportedAt,
-      locationText: [e.location?.village, e.location?.district].filter(Boolean).join(', '),
-      createdAt: e.createdAt,
+      title: e.equipment_name,
+      category: e.equipment_category,
+      ownerName: e.owner?.full_name || 'Unknown',
+      availability: e.availability_status,
+      isReported: Boolean(e.is_reported),
+      reportReason: e.report_reason || '',
+      locationText: [e.village, e.district].filter(Boolean).join(', '),
+      createdAt: e.created_at,
     })),
-    ...labours.map((l) => ({
-      _id: l._id,
+    ...(lbRes.data || []).map((l) => ({
+      _id: l.id,
       type: 'labour',
       title: l.title || `${l.category} Team`,
       category: l.category,
-      ownerName: l.providerId?.name || 'Unknown',
-      availability: l.availability,
-      isReported: Boolean(l.isReported),
-      reportReason: l.reportReason || '',
-      reportedByName: l.reportedBy?.name || '',
-      reportedAt: l.reportedAt,
-      locationText: [l.location?.village, l.location?.district].filter(Boolean).join(', '),
-      createdAt: l.createdAt,
+      ownerName: l.provider?.full_name || 'Unknown',
+      availability: l.availability_status,
+      isReported: Boolean(l.is_reported),
+      reportReason: l.report_reason || '',
+      locationText: [l.village, l.district].filter(Boolean).join(', '),
+      createdAt: l.created_at,
     })),
-    ...facilities.map((f) => ({
-      _id: f._id,
+    ...(fcRes.data || []).map((f) => ({
+      _id: f.id,
       type: 'facility',
-      title: f.name,
-      category: f.category,
-      ownerName: f.operatorId?.name || 'Unknown',
-      availability: f.availability,
-      isReported: Boolean(f.isReported),
-      reportReason: f.reportReason || '',
-      reportedByName: f.reportedBy?.name || '',
-      reportedAt: f.reportedAt,
-      locationText: [f.location?.village, f.location?.district].filter(Boolean).join(', '),
-      createdAt: f.createdAt,
+      title: f.facility_name,
+      category: f.facility_type,
+      ownerName: f.owner?.full_name || 'Unknown',
+      availability: f.availability_status,
+      isReported: Boolean(f.is_reported),
+      reportReason: f.report_reason || '',
+      locationText: [f.village, f.district].filter(Boolean).join(', '),
+      createdAt: f.created_at,
     })),
   ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
@@ -178,47 +213,73 @@ export const getAllListingsAdmin = asyncHandler(async (_req, res) => {
 });
 
 export const getAllBookingsAdmin = asyncHandler(async (_req, res) => {
-  const bookings = await Booking.find({})
-    .populate('farmerId', 'name email phone village district')
-    .populate('providerId', 'name email phone village district')
-    .sort({ createdAt: -1 });
-  res.json({ success: true, data: bookings });
+  const supabase = getSupabaseClient();
+  const { data: rows, error } = await supabase
+    .from('bookings')
+    .select(
+      '*, farmer:profiles!bookings_farmer_id_fkey(id, full_name, mobile_number, village, district), provider:profiles!bookings_provider_id_fkey(id, full_name, mobile_number, village, district)'
+    )
+    .order('created_at', { ascending: false });
+
+  if (error) throw mapSupabaseError(error, 'Could not load bookings.');
+  res.json({ success: true, data: (rows || []).map(formatBookingRow) });
 });
 
 export const toggleListingAvailabilityAdmin = asyncHandler(async (req, res) => {
-  const Model = LISTING_MODELS[req.params.type];
-  if (!Model) throw new AppError('Invalid listing type.', 400);
+  const table = LISTING_TABLES[req.params.type];
+  if (!table) throw new AppError('Invalid listing type.', 400);
+  const id = assertValidUuid(req.params.id, 'listing id');
+  const supabase = getSupabaseClient();
 
-  const doc = await Model.findById(req.params.id);
-  if (!doc) throw new AppError('Listing not found.', 404);
-  doc.availability = !doc.availability;
-  await doc.save();
+  const { data: row } = await supabase
+    .from(table)
+    .select('id, availability_status')
+    .eq('id', id)
+    .maybeSingle();
+  if (!row) throw new AppError('Listing not found.', 404);
 
-  res.json({ success: true, data: doc });
+  const { data: updated, error } = await supabase
+    .from(table)
+    .update({ availability_status: !row.availability_status })
+    .eq('id', id)
+    .select('*')
+    .single();
+  if (error) throw mapSupabaseError(error, 'Could not update listing availability.');
+
+  res.json({ success: true, data: updated });
 });
 
 export const dismissListingReportAdmin = asyncHandler(async (req, res) => {
-  const Model = LISTING_MODELS[req.params.type];
-  if (!Model) throw new AppError('Invalid listing type.', 400);
+  const table = LISTING_TABLES[req.params.type];
+  if (!table) throw new AppError('Invalid listing type.', 400);
+  const id = assertValidUuid(req.params.id, 'listing id');
+  const supabase = getSupabaseClient();
 
-  const doc = await Model.findById(req.params.id);
-  if (!doc) throw new AppError('Listing not found.', 404);
-  doc.isReported = false;
-  doc.reportReason = '';
-  doc.reportedBy = null;
-  doc.reportedAt = null;
-  await doc.save();
+  const { data: updated, error } = await supabase
+    .from(table)
+    .update({
+      is_reported: false,
+      report_reason: '',
+      reported_by: null,
+      reported_at: null,
+    })
+    .eq('id', id)
+    .select('id')
+    .maybeSingle();
+  if (error) throw mapSupabaseError(error, 'Could not dismiss report.');
+  if (!updated) throw new AppError('Listing not found.', 404);
 
   res.json({ success: true, message: 'Report dismissed.' });
 });
 
 export const deleteListingAdmin = asyncHandler(async (req, res) => {
-  const Model = LISTING_MODELS[req.params.type];
-  if (!Model) throw new AppError('Invalid listing type.', 400);
+  const table = LISTING_TABLES[req.params.type];
+  if (!table) throw new AppError('Invalid listing type.', 400);
+  const id = assertValidUuid(req.params.id, 'listing id');
+  const supabase = getSupabaseClient();
 
-  const doc = await Model.findById(req.params.id);
-  if (!doc) throw new AppError('Listing not found.', 404);
-  await doc.deleteOne();
+  const { error } = await supabase.from(table).delete().eq('id', id);
+  if (error) throw mapSupabaseError(error, 'Could not delete listing.');
 
   res.json({ success: true, message: 'Listing deleted by administrator.' });
 });

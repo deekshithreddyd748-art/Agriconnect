@@ -22,16 +22,22 @@ router.post(
   authorize('equipment_owner', 'admin'),
   uploadImages.array('images', 5),
   [
-    body('name').trim().notEmpty().withMessage('Equipment name is required'),
-    body('category').trim().notEmpty().withMessage('Category is required'),
-    body('description').trim().notEmpty().withMessage('Description is required'),
-    body('price').isFloat({ min: 0 }).withMessage('Valid price is required'),
+    body('name').optional().trim(),
+    body('price').optional().isFloat({ min: 0 }).withMessage('Valid price is required'),
   ],
   validateRequest,
   createEquipment
 );
 
 router.put(
+  '/:id',
+  protect,
+  authorize('equipment_owner', 'admin'),
+  uploadImages.array('images', 5),
+  updateEquipment
+);
+
+router.patch(
   '/:id',
   protect,
   authorize('equipment_owner', 'admin'),

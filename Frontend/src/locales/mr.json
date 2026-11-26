@@ -331,7 +331,8 @@
     "viewAll": "सर्व पहा",
     "noLabourRequests": "तुम्ही अद्याप कोणतीही मजूर विनंती पोस्ट केलेली नाही.",
     "noBookings": "अद्याप कोणतेही यंत्र किंवा गोदाम बुकिंग नाही.",
-    "gpsProfileError": "GPS स्थानिक पातळीवर मिळाले, पण प्रोफाइल अपडेट अयशस्वी झाले."
+    "gpsProfileError": "GPS स्थानिक पातळीवर मिळाले, पण प्रोफाइल अपडेट अयशस्वी झाले.",
+    "loadError": "We could not load your dashboard right now. Please try again."
   },
   "labourRequest": {
     "title": "शेतमजूर मागवा",
@@ -553,7 +554,8 @@
     "mapLayerEquipment": "यंत्रसामग्री",
     "mapLayerLabour": "मजूर",
     "mapLayerFacilities": "केंद्रे",
-    "itemsOnMap": "नकाशावर {{count}} सेवा दिसत आहेत"
+    "itemsOnMap": "नकाशावर {{count}} सेवा दिसत आहेत",
+    "loadError": "We could not load the services. Please try again."
   },
   "bookings": {
     "title": "माझी बुकिंग",
@@ -735,5 +737,29 @@
   "voice": {
     "on": "Voice On",
     "off": "Voice Readout"
+  },
+  "favourites": {
+    "title": "Saved Listings",
+    "saveShort": "Save",
+    "savedShort": "Saved",
+    "saveLabel": "Save listing",
+    "removeLabel": "Remove saved listing",
+    "saved": "Saved to your favourites!",
+    "removed": "Removed from saved listings.",
+    "loginRequired": "Please continue with your profile to save listings.",
+    "empty": "You have not saved any machinery, labour, or facilities yet."
+  },
+  "reviews": {
+    "heading": "Ratings & Reviews",
+    "noReviewsShort": "No reviews yet",
+    "leaveReviewTitle": "Rate this completed booking",
+    "placeholder": "Share feedback on punctuality, condition, or service quality...",
+    "submitBtn": "Submit Review",
+    "submitted": "Thank you! Your review has been saved.",
+    "empty": "No ratings or reviews have been posted yet."
+  },
+  "notifications": {
+    "markRead": "Mark read",
+    "markAllRead": "Mark all read"
   }
 }

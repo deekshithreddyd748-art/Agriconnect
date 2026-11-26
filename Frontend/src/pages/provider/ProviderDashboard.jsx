@@ -13,9 +13,10 @@ import {
   Home,
   Briefcase,
 } from 'lucide-react';
-import api from '../../services/api';
+import api, { getErrorMessage } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import { BookingStatusBadge } from '../../components/StatusBadge';
+import NotificationsPanel from '../../components/NotificationsPanel';
+import { AvailabilityBadge, BookingStatusBadge } from '../../components/StatusBadge';
 import { formatCurrency, formatDate } from '../../utils/distance';
 
 export default function ProviderDashboard() {
@@ -23,14 +24,36 @@ export default function ProviderDashboard() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const [stats, setStats] = useState(null);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [loadError, setLoadError] = useState('');
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    api
-      .get('/discovery/dashboard')
-      .then((res) => setStats(res.data.data))
-      .catch(() => setStats(null))
+  function loadProviderDashboard() {
+    setLoading(true);
+    setLoadError('');
+    Promise.all([
+      api.get('/discovery/dashboard'),
+      api.get('/notifications').catch(() => ({ data: { data: [], unreadCount: 0 } })),
+    ])
+      .then(([dashRes, notifRes]) => {
+        setStats(dashRes.data.data);
+        setNotifications(notifRes.data?.data || dashRes.data?.data?.notifications || []);
+        setUnreadCount(
+          notifRes.data?.unreadCount ?? dashRes.data?.data?.unreadNotificationsCount ?? 0
+        );
+      })
+      .catch((err) => {
+        setStats(null);
+        setLoadError(
+          getErrorMessage(err, t('dashboard.loadError', 'We could not load your provider workspace. Please try again.'))
+        );
+      })
       .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    loadProviderDashboard();
   }, []);
 
   const roleHeadingKey =
@@ -111,6 +134,17 @@ export default function ProviderDashboard() {
       {loading ? (
         <div className="py-12 text-center text-sm text-slate-500">
           {t('common.loading')}
+        </div>
+      ) : loadError ? (
+        <div className="bg-rose-50 border border-rose-200 rounded-2xl p-6 text-center space-y-3">
+          <p className="text-sm font-semibold text-rose-800">{loadError}</p>
+          <button
+            type="button"
+            onClick={loadProviderDashboard}
+            className="px-4 py-2 rounded-xl bg-rose-700 text-white text-xs font-bold hover:bg-rose-800"
+          >
+            {t('common.retry')}
+          </button>
         </div>
       ) : (
         <>
@@ -208,6 +242,52 @@ export default function ProviderDashboard() {
                 ))}
               </div>
             )}
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-white rounded-2xl border border-earth-200 p-6 shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-bold text-slate-900">
+                  {t('provider.listingsTitle')}
+                </h2>
+                <Link
+                  to="/provider/listings"
+                  className="text-xs font-semibold text-forest-700 hover:underline inline-flex items-center gap-1"
+                >
+                  {t('provider.actions.manageListings')} <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+              {(stats?.listings || []).length === 0 ? (
+                <p className="text-sm text-slate-500 py-4 text-center">
+                  {t('provider.noListings')}
+                </p>
+              ) : (
+                <div className="space-y-2.5">
+                  {stats.listings.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex items-center justify-between p-3.5 rounded-xl border border-earth-200"
+                    >
+                      <div className="min-w-0">
+                        <div className="font-semibold text-sm text-slate-900 truncate">
+                          {item.name || item.title}
+                        </div>
+                        <div className="text-xs text-slate-500">
+                          {item.category} · {item.village || item.district || '—'}
+                        </div>
+                      </div>
+                      <AvailabilityBadge available={item.availability} />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <NotificationsPanel
+              notifications={notifications}
+              unreadCount={unreadCount}
+              onRefresh={loadProviderDashboard}
+            />
           </div>
         </>
       )}

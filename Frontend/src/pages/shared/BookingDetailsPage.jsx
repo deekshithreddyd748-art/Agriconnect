@@ -6,6 +6,7 @@ import { ArrowLeft, Calendar, MapPin, Phone, Check, X } from 'lucide-react';
 import api, { getErrorMessage } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { BookingStatusBadge } from '../../components/StatusBadge';
+import ReviewsSection from '../../components/ReviewsSection';
 import { formatCurrency, formatDate } from '../../utils/distance';
 
 export default function BookingDetailsPage() {
@@ -231,6 +232,12 @@ export default function BookingDetailsPage() {
             </div>
           )}
       </div>
+
+      <ReviewsSection
+        bookingId={booking._id}
+        reviewedUserId={isFarmer ? booking.providerId?._id : booking.farmerId?._id}
+        canSubmitReview={Boolean((isFarmer || isProvider) && booking.status === 'Completed')}
+      />
     </div>
   );
 }

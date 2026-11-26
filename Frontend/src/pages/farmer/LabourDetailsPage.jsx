@@ -8,6 +8,8 @@ import { useAuth } from '../../context/AuthContext';
 import { useLocationContext } from '../../context/LocationContext';
 import ServiceMap from '../../components/ServiceMap';
 import { AvailabilityBadge } from '../../components/StatusBadge';
+import FavouriteButton from '../../components/FavouriteButton';
+import ReviewsSection from '../../components/ReviewsSection';
 import {
   formatCurrency,
   formatDate,
@@ -131,15 +133,18 @@ export default function LabourDetailsPage() {
         >
           <ArrowLeft className="w-4 h-4" /> {t('marketplace.backToList')}
         </Link>
-        {user && (
-          <button
-            type="button"
-            onClick={handleReport}
-            className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-rose-600"
-          >
-            <Flag className="w-3.5 h-3.5" /> !
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          <FavouriteButton listingType="labour" listingId={item._id} />
+          {user && (
+            <button
+              type="button"
+              onClick={handleReport}
+              className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-rose-600"
+            >
+              <Flag className="w-3.5 h-3.5" /> !
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -249,6 +254,8 @@ export default function LabourDetailsPage() {
               height="280px"
             />
           )}
+
+          <ReviewsSection reviewedUserId={item.providerId?._id || item.provider_id} />
         </div>
 
         <div className="lg:col-span-5">

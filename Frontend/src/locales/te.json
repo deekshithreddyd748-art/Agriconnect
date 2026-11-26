@@ -331,7 +331,8 @@
     "viewAll": "అన్నీ చూడండి",
     "noLabourRequests": "మీరు ఇంకా ఏ కార్మిక అభ్యర్థననూ పోస్ట్ చేయలేదు.",
     "noBookings": "ఇంకా యంత్ర లేదా నిల్వ బుకింగ్స్ లేవు.",
-    "gpsProfileError": "GPS స్థానికంగా సేకరించబడింది, కానీ ప్రొఫైల్ సేవ్ కాలేదు."
+    "gpsProfileError": "GPS స్థానికంగా సేకరించబడింది, కానీ ప్రొఫైల్ సేవ్ కాలేదు.",
+    "loadError": "We could not load your dashboard right now. Please try again."
   },
   "labourRequest": {
     "title": "వ్యవసాయ కార్మికులను అడగండి",
@@ -553,7 +554,8 @@
     "mapLayerEquipment": "యంత్రాలు",
     "mapLayerLabour": "కార్మికులు",
     "mapLayerFacilities": "కేంద్రాలు",
-    "itemsOnMap": "మ్యాప్‌లో {{count}} సేవలు చూపబడుతున్నాయి"
+    "itemsOnMap": "మ్యాప్‌లో {{count}} సేవలు చూపబడుతున్నాయి",
+    "loadError": "We could not load the services. Please try again."
   },
   "bookings": {
     "title": "నా బుకింగ్స్",
@@ -735,5 +737,29 @@
   "voice": {
     "on": "Voice On",
     "off": "Voice Readout"
+  },
+  "favourites": {
+    "title": "Saved Listings",
+    "saveShort": "Save",
+    "savedShort": "Saved",
+    "saveLabel": "Save listing",
+    "removeLabel": "Remove saved listing",
+    "saved": "Saved to your favourites!",
+    "removed": "Removed from saved listings.",
+    "loginRequired": "Please continue with your profile to save listings.",
+    "empty": "You have not saved any machinery, labour, or facilities yet."
+  },
+  "reviews": {
+    "heading": "Ratings & Reviews",
+    "noReviewsShort": "No reviews yet",
+    "leaveReviewTitle": "Rate this completed booking",
+    "placeholder": "Share feedback on punctuality, condition, or service quality...",
+    "submitBtn": "Submit Review",
+    "submitted": "Thank you! Your review has been saved.",
+    "empty": "No ratings or reviews have been posted yet."
+  },
+  "notifications": {
+    "markRead": "Mark read",
+    "markAllRead": "Mark all read"
   }
 }

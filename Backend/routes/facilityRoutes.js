@@ -22,9 +22,6 @@ router.post(
   authorize('facility_operator', 'admin'),
   uploadImages.array('images', 5),
   [
-    body('name').trim().notEmpty().withMessage('Facility name is required'),
-    body('category').trim().notEmpty().withMessage('Facility category is required'),
-    body('description').trim().notEmpty().withMessage('Description is required'),
     body('capacity').isFloat({ min: 1 }).withMessage('Valid total capacity is required'),
     body('price').isFloat({ min: 0 }).withMessage('Valid service charge is required'),
   ],
@@ -33,6 +30,14 @@ router.post(
 );
 
 router.put(
+  '/:id',
+  protect,
+  authorize('facility_operator', 'admin'),
+  uploadImages.array('images', 5),
+  updateFacility
+);
+
+router.patch(
   '/:id',
   protect,
   authorize('facility_operator', 'admin'),

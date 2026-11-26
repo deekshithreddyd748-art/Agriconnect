@@ -4,9 +4,8 @@ import cors from 'cors';
 import helmet from 'helmet';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { connectDB } from './config/db.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
-import { ensureDemoData } from './seed/seedData.js';
+import { isSupabaseConfigured } from './services/supabaseClient.js';
 import authRoutes from './routes/authRoutes.js';
 import profileRoutes from './routes/profileRoutes.js';
 import farmerRoutes from './routes/farmerRoutes.js';
@@ -16,13 +15,16 @@ import labourRequestRoutes from './routes/labourRequestRoutes.js';
 import labourApplicationRoutes from './routes/labourApplicationRoutes.js';
 import facilityRoutes from './routes/facilityRoutes.js';
 import bookingRoutes from './routes/bookingRoutes.js';
+import reviewRoutes from './routes/reviewRoutes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
+import favouriteRoutes from './routes/favouriteRoutes.js';
 import discoveryRoutes from './routes/discoveryRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const app = express();
+export const app = express();
 
 const allowedOrigins = (
   process.env.CLIENT_URL ||
@@ -54,7 +56,14 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.get('/api/health', (_req, res) => {
-  res.json({ success: true, service: 'AgriConnect API', status: 'ok' });
+  const supabaseReady = isSupabaseConfigured();
+  res.json({
+    success: true,
+    service: 'AgriConnect API',
+    status: 'ok',
+    database: 'supabase',
+    supabaseConfigured: supabaseReady,
+  });
 });
 
 app.use('/api/auth', authRoutes);
@@ -66,6 +75,9 @@ app.use('/api/labour-requests', labourRequestRoutes);
 app.use('/api/labour-applications', labourApplicationRoutes);
 app.use('/api/facilities', facilityRoutes);
 app.use('/api/bookings', bookingRoutes);
+app.use('/api/reviews', reviewRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/favourites', favouriteRoutes);
 app.use('/api/discovery', discoveryRoutes);
 app.use('/api/admin', adminRoutes);
 
@@ -74,19 +86,10 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 
-async function startServer() {
-  try {
-    await connectDB();
-    if (process.env.AUTO_SEED !== 'false') {
-      await ensureDemoData();
-    }
-    app.listen(PORT, () => {
-      console.log(`AgriConnect Backend running on http://localhost:${PORT}`);
-    });
-  } catch (err) {
-    console.error('Failed to start server:', err.message);
-    process.exit(1);
-  }
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, () => {
+    console.log(
+      `AgriConnect Backend running on http://localhost:${PORT} (Supabase configured: ${isSupabaseConfigured()})`
+    );
+  });
 }
-
-startServer();

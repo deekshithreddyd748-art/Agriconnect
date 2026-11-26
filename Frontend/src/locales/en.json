@@ -331,7 +331,8 @@
     "viewAll": "View All",
     "noLabourRequests": "You have not posted any labour requests yet.",
     "noBookings": "No equipment or facility bookings yet.",
-    "gpsProfileError": "GPS captured locally, but profile update failed."
+    "gpsProfileError": "GPS captured locally, but profile update failed.",
+    "loadError": "We could not load your dashboard right now. Please try again."
   },
   "labourRequest": {
     "title": "Request Farm Labour",
@@ -553,7 +554,8 @@
     "mapLayerEquipment": "Machinery",
     "mapLayerLabour": "Labour",
     "mapLayerFacilities": "Facilities",
-    "itemsOnMap": "{{count}} services shown on map"
+    "itemsOnMap": "{{count}} services shown on map",
+    "loadError": "We could not load the services. Please try again."
   },
   "bookings": {
     "title": "My Bookings",
@@ -735,5 +737,29 @@
   "voice": {
     "on": "Voice On",
     "off": "Voice Readout"
+  },
+  "favourites": {
+    "title": "Saved Listings",
+    "saveShort": "Save",
+    "savedShort": "Saved",
+    "saveLabel": "Save listing",
+    "removeLabel": "Remove saved listing",
+    "saved": "Saved to your favourites!",
+    "removed": "Removed from saved listings.",
+    "loginRequired": "Please continue with your profile to save listings.",
+    "empty": "You have not saved any machinery, labour, or facilities yet."
+  },
+  "reviews": {
+    "heading": "Ratings & Reviews",
+    "noReviewsShort": "No reviews yet",
+    "leaveReviewTitle": "Rate this completed booking",
+    "placeholder": "Share feedback on punctuality, condition, or service quality...",
+    "submitBtn": "Submit Review",
+    "submitted": "Thank you! Your review has been saved.",
+    "empty": "No ratings or reviews have been posted yet."
+  },
+  "notifications": {
+    "markRead": "Mark read",
+    "markAllRead": "Mark all read"
   }
 }

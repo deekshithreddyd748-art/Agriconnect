@@ -1,8 +1,11 @@
 import crypto from 'crypto';
-import LabourRequest from '../models/LabourRequest.js';
-import LabourApplication from '../models/LabourApplication.js';
-import LabourBooking from '../models/LabourBooking.js';
 import { AppError, asyncHandler } from '../middleware/errorHandler.js';
+import { getSupabaseClient } from '../services/supabaseClient.js';
+import {
+  assertValidUuid,
+  formatProfileRow,
+  mapSupabaseError,
+} from '../services/supabaseMappers.js';
 import { enrichAndFilterByDistance } from '../utils/haversine.js';
 import { extractQueryCoords, normalizeLocation } from '../utils/listingHelpers.js';
 
@@ -25,9 +28,7 @@ function getTodayIsoDate() {
 }
 
 function generateCode(prefix) {
-  const year = new Date().getFullYear();
-  const suffix = crypto.randomInt(1000, 9999);
-  return `${prefix}-${year}-${suffix}`;
+  return `${prefix}-${new Date().getFullYear()}-${crypto.randomInt(1000, 9999)}`;
 }
 
 function computeStatusFromCounts(accepted, required, currentStatus, hasPendingApps = false) {
@@ -38,6 +39,81 @@ function computeStatusFromCounts(accepted, required, currentStatus, hasPendingAp
   if (accepted > 0) return 'Partially Filled';
   if (hasPendingApps) return 'Applications Received';
   return 'Open';
+}
+
+function formatLabourRequestRow(row) {
+  if (!row) return null;
+  const farmer = row.farmer ? formatProfileRow(row.farmer, { includePrivate: true }) : null;
+  const loc = row.location || {};
+  return {
+    id: row.id,
+    _id: row.id,
+    requestCode: row.request_code,
+    request_code: row.request_code,
+    farmerId: farmer || row.farmer_id,
+    farmer_id: row.farmer_id,
+    category: row.category,
+    workersRequired: row.workers_required,
+    workersAccepted: row.workers_accepted,
+    remainingVacancies: row.remaining_vacancies,
+    startDate: row.start_date,
+    durationDays: Number(row.duration_days ?? 1),
+    dailyWage: Number(row.daily_wage ?? 0),
+    budget: row.budget !== null ? Number(row.budget) : null,
+    farmSize: row.farm_size !== null ? Number(row.farm_size) : null,
+    farmSizeUnit: row.farm_size_unit || 'acres',
+    estimatedTotal: Number(row.estimated_total ?? 0),
+    location: {
+      lat: loc.lat ?? null,
+      lng: loc.lng ?? null,
+      address: loc.address || '',
+      village: loc.village || '',
+      district: loc.district || '',
+      state: loc.state || '',
+    },
+    instructions: row.instructions || '',
+    preferredHours: row.preferred_hours || '',
+    status: row.status,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function formatLabourBookingRow(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    _id: row.id,
+    bookingCode: row.booking_code,
+    booking_code: row.booking_code,
+    labourRequestId: row.request ? formatLabourRequestRow(row.request) : row.request_id,
+    requestId: row.request_id,
+    farmerId: row.farmer ? formatProfileRow(row.farmer, { includePrivate: true }) : row.farmer_id,
+    workerId: row.worker ? formatProfileRow(row.worker, { includePrivate: true }) : row.worker_id,
+    acceptedDate: row.accepted_date,
+    dailyWage: Number(row.daily_wage ?? 0),
+    durationDays: Number(row.duration_days ?? 1),
+    bookingStatus: row.status,
+    status: row.status,
+    notes: row.notes || '',
+    createdAt: row.created_at,
+  };
+}
+
+function formatApplicationRow(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    _id: row.id,
+    requestId: row.request ? formatLabourRequestRow(row.request) : row.request_id,
+    workerId: row.worker ? formatProfileRow(row.worker, { includePrivate: true }) : row.labour_provider_id,
+    numberOfWorkers: row.workers_offered ?? 1,
+    proposedWage: row.proposed_wage !== null ? Number(row.proposed_wage) : null,
+    message: row.message || '',
+    status: row.status,
+    appliedAt: row.created_at,
+    createdAt: row.created_at,
+  };
 }
 
 export const createLabourRequest = asyncHandler(async (req, res) => {
@@ -62,9 +138,7 @@ export const createLabourRequest = asyncHandler(async (req, res) => {
   } = req.body;
 
   const finalCategory = category || workType;
-  if (!finalCategory) {
-    throw new AppError('Work type / category is required.', 400);
-  }
+  if (!finalCategory) throw new AppError('Work type / category is required.', 400);
 
   const workersNum = Number(workersRequired ?? numberOfWorkers);
   if (!Number.isInteger(workersNum) || workersNum < 1) {
@@ -87,8 +161,7 @@ export const createLabourRequest = asyncHandler(async (req, res) => {
   }
 
   const finalStartDate = startDate || requiredDate;
-  const today = getTodayIsoDate();
-  if (!finalStartDate || finalStartDate < today) {
+  if (!finalStartDate || finalStartDate < getTodayIsoDate()) {
     throw new AppError('Required date cannot be in the past.', 400);
   }
 
@@ -110,470 +183,416 @@ export const createLabourRequest = asyncHandler(async (req, res) => {
         ? Math.round(budgetNum * 100) / 100
         : 0;
 
-  let requestCode = generateCode('LR');
-  for (let i = 0; i < 3; i += 1) {
-    const exists = await LabourRequest.exists({ requestCode });
-    if (!exists) break;
-    requestCode = generateCode('LR');
-  }
+  const supabase = getSupabaseClient();
+  const requestCode = generateCode('LR');
 
-  const created = await LabourRequest.create({
-    requestCode,
-    farmerId: req.user._id,
-    category: finalCategory,
-    workersRequired: workersNum,
-    workersAccepted: 0,
-    remainingVacancies: workersNum,
-    acceptedWorkerIds: [],
-    startDate: finalStartDate,
-    durationDays: durationNum,
-    dailyWage: wageNum,
-    budget: budgetNum,
-    farmSize: farmSize !== undefined && farmSize !== '' && farmSize !== null ? Number(farmSize) : null,
-    farmSizeUnit: farmSizeUnit === 'hectares' ? 'hectares' : 'acres',
-    estimatedTotal,
-    location: normalizedLoc,
-    instructions,
-    preferredHours,
-    status: 'Open',
-  });
+  const { data: created, error } = await supabase
+    .from('labour_requests')
+    .insert({
+      request_code: requestCode,
+      farmer_id: req.user.id,
+      category: finalCategory,
+      workers_required: workersNum,
+      workers_accepted: 0,
+      remaining_vacancies: workersNum,
+      start_date: finalStartDate,
+      duration_days: durationNum,
+      daily_wage: wageNum,
+      budget: budgetNum,
+      farm_size: farmSize !== undefined && farmSize !== '' && farmSize !== null ? Number(farmSize) : null,
+      farm_size_unit: farmSizeUnit === 'hectares' ? 'hectares' : 'acres',
+      estimated_total: estimatedTotal,
+      location: normalizedLoc,
+      instructions: String(instructions || '').trim(),
+      preferred_hours: String(preferredHours || '').trim(),
+      status: 'Open',
+    })
+    .select('*, farmer:profiles!labour_requests_farmer_id_fkey(id, full_name, mobile_number, village, district, state)')
+    .single();
 
-  const populated = await created.populate(
-    'farmerId',
-    'name phone village district state'
-  );
+  if (error) throw mapSupabaseError(error, 'Could not post labour request.');
 
   res.status(201).json({
     success: true,
-    data: populated,
+    data: formatLabourRequestRow(created),
   });
 });
 
 export const updateLabourRequest = asyncHandler(async (req, res) => {
-  const request = await LabourRequest.findById(req.params.id);
-  if (!request) {
-    throw new AppError('Labour request not found.', 404);
-  }
-  if (
-    request.farmerId.toString() !== req.user._id.toString() &&
-    req.user.role !== 'admin'
-  ) {
+  const id = assertValidUuid(req.params.id, 'labour request id');
+  const supabase = getSupabaseClient();
+
+  const { data: existing, error: fetchErr } = await supabase
+    .from('labour_requests')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (fetchErr) throw mapSupabaseError(fetchErr, 'Failed to read labour request.');
+  if (!existing) throw new AppError('Labour request not found.', 404);
+  if (String(existing.farmer_id) !== String(req.user.id) && req.user.role !== 'admin') {
     throw new AppError('You can only edit your own labour requests.', 403);
   }
-  if (!EDITABLE_STATUSES.includes(request.status)) {
-    throw new AppError(`Cannot edit a request in status "${request.status}".`, 400);
+  if (!EDITABLE_STATUSES.includes(existing.status)) {
+    throw new AppError(`Cannot edit a request in status "${existing.status}".`, 400);
   }
 
-  const {
-    category,
-    workType,
-    workersRequired,
-    numberOfWorkers,
-    startDate,
-    requiredDate,
-    durationDays,
-    dailyWage,
-    budget,
-    farmSize,
-    farmSizeUnit,
-    village,
-    district,
-    state,
-    location,
-    instructions,
-    preferredHours,
-  } = req.body;
+  const nextWorkers =
+    (req.body.workersRequired ?? req.body.numberOfWorkers) !== undefined
+      ? Number(req.body.workersRequired ?? req.body.numberOfWorkers)
+      : existing.workers_required;
+  const nextDuration =
+    req.body.durationDays !== undefined ? Number(req.body.durationDays) : Number(existing.duration_days);
+  const nextWage =
+    req.body.dailyWage !== undefined
+      ? Number(req.body.dailyWage || 0)
+      : Number(existing.daily_wage || 0);
+  const nextBudget =
+    req.body.budget !== undefined
+      ? req.body.budget === '' || req.body.budget === null
+        ? null
+        : Number(req.body.budget)
+      : existing.budget;
 
-  if (category || workType) request.category = category || workType;
+  const updates = {
+    category: req.body.category || req.body.workType || existing.category,
+    workers_required: nextWorkers,
+    remaining_vacancies: Math.max(0, nextWorkers - existing.workers_accepted),
+    duration_days: nextDuration,
+    daily_wage: nextWage,
+    budget: nextBudget,
+    estimated_total:
+      nextWage > 0
+        ? Math.round(nextWorkers * nextDuration * nextWage * 100) / 100
+        : nextBudget !== null
+          ? Math.round(Number(nextBudget) * 100) / 100
+          : 0,
+    instructions: req.body.instructions ?? existing.instructions,
+    preferred_hours: req.body.preferredHours ?? existing.preferred_hours,
+  };
 
-  if (workersRequired !== undefined || numberOfWorkers !== undefined) {
-    const wNum = Number(workersRequired ?? numberOfWorkers);
-    if (!Number.isInteger(wNum) || wNum < Math.max(1, request.workersAccepted)) {
-      throw new AppError(
-        `Workers required must be an integer at least ${Math.max(1, request.workersAccepted)}.`,
-        400
-      );
-    }
-    request.workersRequired = wNum;
+  const nextStart = req.body.startDate || req.body.requiredDate;
+  if (nextStart) {
+    if (nextStart < getTodayIsoDate()) throw new AppError('Required date cannot be in the past.', 400);
+    updates.start_date = nextStart;
   }
 
-  const nextStart = startDate || requiredDate;
-  if (nextStart !== undefined) {
-    if (nextStart < getTodayIsoDate()) {
-      throw new AppError('Required date cannot be in the past.', 400);
-    }
-    request.startDate = nextStart;
-  }
+  const { data: updated, error: updErr } = await supabase
+    .from('labour_requests')
+    .update(updates)
+    .eq('id', id)
+    .select('*, farmer:profiles!labour_requests_farmer_id_fkey(id, full_name, mobile_number, village, district, state)')
+    .single();
 
-  if (durationDays !== undefined) {
-    const dNum = Number(durationDays);
-    if (!Number.isFinite(dNum) || dNum <= 0) {
-      throw new AppError('Duration must be a positive number.', 400);
-    }
-    request.durationDays = dNum;
-  }
+  if (updErr) throw mapSupabaseError(updErr, 'Could not update labour request.');
 
-  if (dailyWage !== undefined) {
-    const wNum = dailyWage === '' || dailyWage === null ? 0 : Number(dailyWage);
-    if (!Number.isFinite(wNum) || wNum < 0) {
-      throw new AppError('Daily wage cannot be negative.', 400);
-    }
-    request.dailyWage = wNum;
-  }
-
-  if (budget !== undefined) {
-    const bNum = budget === '' || budget === null ? null : Number(budget);
-    if (bNum !== null && (!Number.isFinite(bNum) || bNum < 0)) {
-      throw new AppError('Budget cannot be negative.', 400);
-    }
-    request.budget = bNum;
-  }
-
-  if (farmSize !== undefined) {
-    request.farmSize = farmSize === '' || farmSize === null ? null : Number(farmSize);
-  }
-  if (farmSizeUnit !== undefined) {
-    request.farmSizeUnit = farmSizeUnit === 'hectares' ? 'hectares' : 'acres';
-  }
-  if (instructions !== undefined) request.instructions = instructions;
-  if (preferredHours !== undefined) request.preferredHours = preferredHours;
-
-  if (location !== undefined || village !== undefined || district !== undefined || state !== undefined) {
-    const normalized = normalizeLocation(location, {
-      village: village ?? request.location?.village,
-      district: district ?? request.location?.district,
-      state: state ?? request.location?.state,
-      location: request.location,
-    });
-    if (!normalized.village) {
-      throw new AppError('Work village / location is required.', 400);
-    }
-    request.location = normalized;
-  }
-
-  request.remainingVacancies = Math.max(0, request.workersRequired - request.workersAccepted);
-  request.estimatedTotal =
-    request.dailyWage > 0
-      ? Math.round(request.workersRequired * request.durationDays * request.dailyWage * 100) / 100
-      : request.budget !== null
-        ? Math.round(request.budget * 100) / 100
-        : 0;
-
-  await request.save();
-  res.json({ success: true, data: request });
+  res.json({ success: true, data: formatLabourRequestRow(updated) });
 });
 
 export const getLabourRequests = asyncHandler(async (req, res) => {
-  const { mine, category, district, search, status } = req.query;
+  const { mine, category, status } = req.query;
+  const supabase = getSupabaseClient();
 
-  if (mine === 'true') {
-    const requests = await LabourRequest.find({ farmerId: req.user._id })
-      .populate('acceptedWorkerIds', 'name phone village district skills experience availability')
-      .sort({ createdAt: -1 })
-      .lean();
+  let query = supabase
+    .from('labour_requests')
+    .select('*, farmer:profiles!labour_requests_farmer_id_fkey(id, full_name, mobile_number, village, district, state)')
+    .order('created_at', { ascending: false });
 
-    const requestIds = requests.map((r) => r._id);
-    const [applications, bookings] = await Promise.all([
-      LabourApplication.find({ requestId: { $in: requestIds } })
-        .sort({ appliedAt: -1 })
-        .lean(),
-      LabourBooking.find({ labourRequestId: { $in: requestIds } })
-        .populate('workerId', 'name phone village district skills experience availability')
-        .sort({ createdAt: -1 })
-        .lean(),
-    ]);
-
-    const appsByReq = new Map();
-    for (const app of applications) {
-      const key = app.requestId.toString();
-      if (!appsByReq.has(key)) appsByReq.set(key, []);
-      appsByReq.get(key).push(app);
-    }
-
-    const bookingsByReq = new Map();
-    for (const b of bookings) {
-      const key = b.labourRequestId.toString();
-      if (!bookingsByReq.has(key)) bookingsByReq.set(key, []);
-      bookingsByReq.get(key).push(b);
-    }
-
-    const data = requests.map((r) => ({
-      ...r,
-      remainingVacancies:
-        r.remainingVacancies ?? Math.max(0, r.workersRequired - r.workersAccepted),
-      applications: appsByReq.get(r._id.toString()) || [],
-      bookings: bookingsByReq.get(r._id.toString()) || [],
-    }));
-
-    return res.json({
-      success: true,
-      count: data.length,
-      data,
-    });
-  }
-
-  const filter = {};
-  if (status && status !== 'All') {
-    filter.status = status;
+  if (mine === 'true' || req.user.role === 'farmer') {
+    query = query.eq('farmer_id', req.user.id);
   } else {
-    filter.status = { $in: OPEN_STATUSES };
+    query = query.in('status', OPEN_STATUSES);
   }
-  if (category && category !== 'All') filter.category = category;
-  if (district && district.trim()) {
-    filter['location.district'] = new RegExp(district.trim(), 'i');
-  }
-  if (search && search.trim()) {
-    const regex = new RegExp(search.trim(), 'i');
-    filter.$or = [
-      { category: regex },
-      { requestCode: regex },
-      { instructions: regex },
-      { 'location.village': regex },
-      { 'location.district': regex },
-    ];
-  }
+  if (category && category !== 'All') query = query.eq('category', category);
+  if (status && status !== 'All') query = query.eq('status', status);
 
-  const requests = await LabourRequest.find(filter)
-    .populate('farmerId', 'name phone village district state')
-    .sort({ createdAt: -1 });
+  const { data: rows, error } = await query;
+  if (error) throw mapSupabaseError(error, 'Could not load labour requests.');
 
   const { userCoords, radiusKm } = extractQueryCoords(req.query);
-  const enriched = enrichAndFilterByDistance(requests, userCoords, radiusKm);
+  const formatted = (rows || []).map(formatLabourRequestRow);
+  const enriched = enrichAndFilterByDistance(formatted, userCoords, radiusKm);
 
-  const reqIds = enriched.map((r) => r._id);
-  const [myApps, myBookings] = await Promise.all([
-    LabourApplication.find({ workerId: req.user._id, requestId: { $in: reqIds } }).lean(),
-    LabourBooking.find({ workerId: req.user._id, labourRequestId: { $in: reqIds } }).lean(),
-  ]);
-  const appMap = new Map(myApps.map((a) => [a.requestId.toString(), a]));
-  const bookingMap = new Map(myBookings.map((b) => [b.labourRequestId.toString(), b]));
-
-  const data = enriched.map((r) => {
-    const hasAcceptedBooking = bookingMap.has(r._id.toString());
-    const safeFarmer = r.farmerId
-      ? {
-          _id: r.farmerId._id,
-          name: r.farmerId.name,
-          village: r.farmerId.village,
-          district: r.farmerId.district,
-          state: r.farmerId.state,
-          ...(hasAcceptedBooking || req.user.role === 'admin'
-            ? { phone: r.farmerId.phone }
-            : {}),
-        }
-      : null;
-
-    return {
-      ...r,
-      farmerId: safeFarmer,
-      remainingVacancies:
-        r.remainingVacancies ?? Math.max(0, r.workersRequired - r.workersAccepted),
-      myApplication: appMap.get(r._id.toString()) || null,
-      myBooking: bookingMap.get(r._id.toString()) || null,
-    };
-  });
-
-  return res.json({
+  res.json({
     success: true,
-    count: data.length,
-    data,
+    count: enriched.length,
+    data: enriched,
   });
 });
 
 export const getLabourRequestById = asyncHandler(async (req, res) => {
-  const request = await LabourRequest.findById(req.params.id)
-    .populate('farmerId', 'name phone village district state')
-    .populate('acceptedWorkerIds', 'name phone village district skills experience availability');
-  if (!request) {
-    throw new AppError('Labour request not found.', 404);
-  }
+  const id = assertValidUuid(req.params.id, 'labour request id');
+  const supabase = getSupabaseClient();
+  const { data: row, error } = await supabase
+    .from('labour_requests')
+    .select('*, farmer:profiles!labour_requests_farmer_id_fkey(id, full_name, mobile_number, village, district, state)')
+    .eq('id', id)
+    .maybeSingle();
 
-  const isOwner =
-    request.farmerId?._id?.toString() === req.user._id.toString() ||
-    req.user.role === 'admin';
+  if (error) throw mapSupabaseError(error, 'Failed to read labour request.');
+  if (!row) throw new AppError('Labour request not found.', 404);
 
-  const [applications, bookings] = await Promise.all([
-    isOwner
-      ? LabourApplication.find({ requestId: request._id }).sort({ appliedAt: -1 })
-      : LabourApplication.find({ requestId: request._id, workerId: req.user._id }),
-    isOwner
-      ? LabourBooking.find({ labourRequestId: request._id })
-          .populate('workerId', 'name phone village district skills experience availability')
-          .sort({ createdAt: -1 })
-      : LabourBooking.find({ labourRequestId: request._id, workerId: req.user._id }),
-  ]);
-
-  res.json({
-    success: true,
-    data: {
-      ...request.toObject(),
-      applications,
-      bookings,
-    },
-  });
-});
-
-/**
- * Worker directly accepts an available vacancy on an open labour request.
- * Uses an atomic conditional update to prevent overbooking or duplicate acceptance.
- */
-export const acceptLabourRequest = asyncHandler(async (req, res) => {
-  const existingRequest = await LabourRequest.findById(req.params.id);
-  if (!existingRequest) {
-    throw new AppError('Labour request not found.', 404);
-  }
-  if (existingRequest.farmerId.toString() === req.user._id.toString()) {
-    throw new AppError('You cannot accept your own labour request.', 400);
-  }
-
-  const updatedReq = await LabourRequest.findOneAndUpdate(
-    {
-      _id: req.params.id,
-      status: { $in: OPEN_STATUSES },
-      acceptedWorkerIds: { $ne: req.user._id },
-      $expr: { $lt: ['$workersAccepted', '$workersRequired'] },
-    },
-    {
-      $inc: { workersAccepted: 1 },
-      $addToSet: { acceptedWorkerIds: req.user._id },
-    },
-    { new: true }
-  );
-
-  if (!updatedReq) {
-    const alreadyAccepted = existingRequest.acceptedWorkerIds.some(
-      (id) => id.toString() === req.user._id.toString()
-    );
-    if (alreadyAccepted) {
-      throw new AppError('You have already accepted this labour request.', 409);
-    }
-    throw new AppError(
-      'This labour request has no remaining vacancies.',
-      409
-    );
-  }
-
-  updatedReq.remainingVacancies = Math.max(
-    0,
-    updatedReq.workersRequired - updatedReq.workersAccepted
-  );
-  updatedReq.status = computeStatusFromCounts(
-    updatedReq.workersAccepted,
-    updatedReq.workersRequired,
-    updatedReq.status
-  );
-  await updatedReq.save();
-
-  let booking;
-  try {
-    booking = await LabourBooking.create({
-      bookingCode: generateCode('LB'),
-      labourRequestId: updatedReq._id,
-      farmerId: updatedReq.farmerId,
-      workerId: req.user._id,
-      bookingStatus: 'Accepted',
-    });
-  } catch (err) {
-    await LabourRequest.findByIdAndUpdate(updatedReq._id, {
-      $inc: { workersAccepted: -1 },
-      $pull: { acceptedWorkerIds: req.user._id },
-    });
-    if (err.code === 11000) {
-      throw new AppError('You have already accepted this labour request.', 409);
-    }
-    throw err;
-  }
-
-  await LabourApplication.findOneAndUpdate(
-    { requestId: updatedReq._id, workerId: req.user._id },
-    {
-      requestId: updatedReq._id,
-      workerId: req.user._id,
-      workerName: req.user.name,
-      workerPhone: req.user.phone,
-      workerVillage: [req.user.village, req.user.district].filter(Boolean).join(', '),
-      skills: req.user.skills || [],
-      experience: req.user.experience || '',
-      status: 'Accepted',
-    },
-    { upsert: true }
-  );
-
-  const populatedBooking = await LabourBooking.findById(booking._id)
-    .populate('farmerId', 'name phone village district state')
-    .populate('labourRequestId');
-
-  res.status(201).json({
-    success: true,
-    data: {
-      booking: populatedBooking,
-      request: updatedReq,
-    },
-  });
+  res.json({ success: true, data: formatLabourRequestRow(row) });
 });
 
 export const cancelLabourRequest = asyncHandler(async (req, res) => {
-  const request = await LabourRequest.findById(req.params.id);
-  if (!request) {
-    throw new AppError('Labour request not found.', 404);
-  }
-  if (
-    request.farmerId.toString() !== req.user._id.toString() &&
-    req.user.role !== 'admin'
-  ) {
+  const id = assertValidUuid(req.params.id, 'labour request id');
+  const supabase = getSupabaseClient();
+
+  const { data: existing, error: fetchErr } = await supabase
+    .from('labour_requests')
+    .select('id, farmer_id, status')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (fetchErr) throw mapSupabaseError(fetchErr, 'Failed to load labour request.');
+  if (!existing) throw new AppError('Labour request not found.', 404);
+  if (String(existing.farmer_id) !== String(req.user.id) && req.user.role !== 'admin') {
     throw new AppError('You can only cancel your own labour requests.', 403);
   }
-  if (['Completed', 'Cancelled'].includes(request.status)) {
-    throw new AppError(`Cannot cancel a request that is already ${request.status}.`, 400);
+  if (existing.status === 'Completed' || existing.status === 'Cancelled') {
+    throw new AppError(`Cannot cancel request in status "${existing.status}".`, 400);
   }
 
-  request.status = 'Cancelled';
-  await request.save();
-  await LabourBooking.updateMany(
-    { labourRequestId: request._id, bookingStatus: { $in: ['Accepted', 'In Progress'] } },
-    { bookingStatus: 'Cancelled' }
-  );
+  const { data: updated, error } = await supabase
+    .from('labour_requests')
+    .update({ status: 'Cancelled' })
+    .eq('id', id)
+    .select('*')
+    .single();
 
-  res.json({
-    success: true,
-    data: request,
-  });
+  if (error) throw mapSupabaseError(error, 'Could not cancel labour request.');
+  res.json({ success: true, data: formatLabourRequestRow(updated) });
 });
 
 export const updateLabourRequestStatus = asyncHandler(async (req, res) => {
+  const id = assertValidUuid(req.params.id, 'labour request id');
   const { status } = req.body;
-  const request = await LabourRequest.findById(req.params.id);
-  if (!request) {
-    throw new AppError('Labour request not found.', 404);
-  }
-  if (
-    request.farmerId.toString() !== req.user._id.toString() &&
-    req.user.role !== 'admin'
-  ) {
-    throw new AppError('You can only update your own labour requests.', 403);
-  }
   if (!['In Progress', 'Completed', 'Cancelled'].includes(status)) {
     throw new AppError('Invalid status transition.', 400);
   }
 
-  request.status = status;
-  await request.save();
-  res.json({ success: true, data: request });
+  const supabase = getSupabaseClient();
+  const { data: existing, error: fetchErr } = await supabase
+    .from('labour_requests')
+    .select('id, farmer_id')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (fetchErr) throw mapSupabaseError(fetchErr, 'Failed to read labour request.');
+  if (!existing) throw new AppError('Labour request not found.', 404);
+  if (String(existing.farmer_id) !== String(req.user.id) && req.user.role !== 'admin') {
+    throw new AppError('You can only update your own labour requests.', 403);
+  }
+
+  const { data: updated, error } = await supabase
+    .from('labour_requests')
+    .update({ status })
+    .eq('id', id)
+    .select('*')
+    .single();
+
+  if (error) throw mapSupabaseError(error, 'Could not update labour request status.');
+  res.json({ success: true, data: formatLabourRequestRow(updated) });
+});
+
+export const acceptLabourRequest = asyncHandler(async (req, res) => {
+  const id = assertValidUuid(req.params.id, 'labour request id');
+  const supabase = getSupabaseClient();
+
+  const { data: reqRow, error: fetchErr } = await supabase
+    .from('labour_requests')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (fetchErr) throw mapSupabaseError(fetchErr, 'Failed to read labour request.');
+  if (!reqRow) throw new AppError('Labour request not found.', 404);
+  if (String(reqRow.farmer_id) === String(req.user.id)) {
+    throw new AppError('You cannot accept your own labour request.', 400);
+  }
+  if (!OPEN_STATUSES.includes(reqRow.status) || reqRow.remaining_vacancies <= 0) {
+    throw new AppError('This labour request is no longer accepting workers.', 409);
+  }
+
+  const nextAccepted = Number(reqRow.workers_accepted) + 1;
+  const nextRemaining = Math.max(0, Number(reqRow.workers_required) - nextAccepted);
+  const nextStatus = computeStatusFromCounts(
+    nextAccepted,
+    reqRow.workers_required,
+    reqRow.status
+  );
+
+  const { data: createdBooking, error: lbErr } = await supabase
+    .from('labour_bookings')
+    .insert({
+      booking_code: generateCode('LB'),
+      request_id: id,
+      farmer_id: reqRow.farmer_id,
+      worker_id: req.user.id,
+      accepted_date: reqRow.start_date,
+      daily_wage: reqRow.daily_wage,
+      duration_days: reqRow.duration_days,
+      status: 'Accepted',
+    })
+    .select('*')
+    .single();
+
+  if (lbErr) {
+    if (lbErr.code === '23505') {
+      throw new AppError('You have already accepted this labour request.', 409);
+    }
+    throw mapSupabaseError(lbErr, 'Could not create worker confirmation.');
+  }
+
+  const { data: updatedReq } = await supabase
+    .from('labour_requests')
+    .update({
+      workers_accepted: nextAccepted,
+      remaining_vacancies: nextRemaining,
+      status: nextStatus,
+    })
+    .eq('id', id)
+    .select('*')
+    .single();
+
+  await supabase.from('notifications').insert({
+    user_id: reqRow.farmer_id,
+    title: 'Worker Accepted Request',
+    message: `${req.user.name} accepted your ${reqRow.category} request (${reqRow.request_code}).`,
+    notification_type: 'labour_request_accepted',
+  });
+
+  res.status(201).json({
+    success: true,
+    data: {
+      booking: formatLabourBookingRow(createdBooking),
+      request: formatLabourRequestRow(updatedReq || reqRow),
+    },
+  });
+});
+
+export const applyToLabourRequest = asyncHandler(async (req, res) => {
+  const id = assertValidUuid(req.params.id, 'labour request id');
+  const workersOffered = Math.max(1, Number(req.body?.numberOfWorkers || req.body?.workersOffered || 1));
+  const supabase = getSupabaseClient();
+
+  const { data: reqRow, error: fetchErr } = await supabase
+    .from('labour_requests')
+    .select('id, farmer_id, remaining_vacancies, status')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (fetchErr) throw mapSupabaseError(fetchErr, 'Failed to read labour request.');
+  if (!reqRow) throw new AppError('Labour request not found.', 404);
+  if (!OPEN_STATUSES.includes(reqRow.status)) {
+    throw new AppError('This request is closed for applications.', 400);
+  }
+
+  const { data: created, error } = await supabase
+    .from('labour_applications')
+    .insert({
+      request_id: id,
+      labour_provider_id: req.user.id,
+      workers_offered: workersOffered,
+      proposed_wage: req.body?.proposedWage ?? null,
+      message: String(req.body?.message || '').trim(),
+      status: 'Pending',
+    })
+    .select('*')
+    .single();
+
+  if (error) {
+    if (error.code === '23505') {
+      throw new AppError('You have already applied to this labour request.', 409);
+    }
+    throw mapSupabaseError(error, 'Could not submit application.');
+  }
+
+  res.status(201).json({ success: true, data: formatApplicationRow(created) });
+});
+
+export const getRequestApplications = asyncHandler(async (req, res) => {
+  const id = assertValidUuid(req.params.id, 'labour request id');
+  const supabase = getSupabaseClient();
+
+  const { data: reqRow, error: reqErr } = await supabase
+    .from('labour_requests')
+    .select('id, farmer_id')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (reqErr) throw mapSupabaseError(reqErr, 'Failed to read labour request.');
+  if (!reqRow) throw new AppError('Labour request not found.', 404);
+  if (String(reqRow.farmer_id) !== String(req.user.id) && req.user.role !== 'admin') {
+    throw new AppError('Only the request owner can view applications.', 403);
+  }
+
+  const { data: apps, error } = await supabase
+    .from('labour_applications')
+    .select('*, worker:profiles!labour_applications_labour_provider_id_fkey(id, full_name, mobile_number, village, district)')
+    .eq('request_id', id)
+    .order('created_at', { ascending: false });
+
+  if (error) throw mapSupabaseError(error, 'Could not load applications.');
+  res.json({ success: true, count: (apps || []).length, data: (apps || []).map(formatApplicationRow) });
+});
+
+export const getMyApplications = asyncHandler(async (req, res) => {
+  const supabase = getSupabaseClient();
+  const { data: apps, error } = await supabase
+    .from('labour_applications')
+    .select('*, request:labour_requests(*, farmer:profiles!labour_requests_farmer_id_fkey(id, full_name, mobile_number, village, district, state))')
+    .eq('labour_provider_id', req.user.id)
+    .order('created_at', { ascending: false });
+
+  if (error) throw mapSupabaseError(error, 'Could not load applications.');
+  res.json({ success: true, count: (apps || []).length, data: (apps || []).map(formatApplicationRow) });
+});
+
+export const getWorkerBookings = asyncHandler(async (req, res) => {
+  const supabase = getSupabaseClient();
+  const { data: rows, error } = await supabase
+    .from('labour_bookings')
+    .select('*, farmer:profiles!labour_bookings_farmer_id_fkey(id, full_name, mobile_number, village, district, state), request:labour_requests(*)')
+    .eq('worker_id', req.user.id)
+    .order('created_at', { ascending: false });
+
+  if (error) throw mapSupabaseError(error, 'Could not load worker bookings.');
+  const formatted = (rows || []).map(formatLabourBookingRow);
+  res.json({ success: true, count: formatted.length, data: formatted });
+});
+
+export const getFarmerLabourBookings = asyncHandler(async (req, res) => {
+  const supabase = getSupabaseClient();
+  const { data: rows, error } = await supabase
+    .from('labour_bookings')
+    .select('*, worker:profiles!labour_bookings_worker_id_fkey(id, full_name, mobile_number, village, district), request:labour_requests(*)')
+    .eq('farmer_id', req.user.id)
+    .order('created_at', { ascending: false });
+
+  if (error) throw mapSupabaseError(error, 'Could not load labour bookings.');
+  const formatted = (rows || []).map(formatLabourBookingRow);
+  res.json({ success: true, count: formatted.length, data: formatted });
 });
 
 export const updateLabourBookingStatus = asyncHandler(async (req, res) => {
-  const { bookingStatus } = req.body;
-  const booking = await LabourBooking.findById(req.params.bookingId);
-  if (!booking) {
-    throw new AppError('Labour booking not found.', 404);
-  }
+  const bookingId = assertValidUuid(req.params.bookingId, 'labour booking id');
+  const nextStatus = req.body?.bookingStatus ?? req.body?.status;
+  const supabase = getSupabaseClient();
 
-  const userId = req.user._id.toString();
-  const isFarmer = booking.farmerId.toString() === userId;
-  const isWorker = booking.workerId.toString() === userId;
-  const isAdmin = req.user.role === 'admin';
+  const { data: booking, error: fetchErr } = await supabase
+    .from('labour_bookings')
+    .select('*')
+    .eq('id', bookingId)
+    .maybeSingle();
 
-  if (!isFarmer && !isWorker && !isAdmin) {
+  if (fetchErr) throw mapSupabaseError(fetchErr, 'Failed to load labour booking.');
+  if (!booking) throw new AppError('Labour booking not found.', 404);
+
+  const isFarmer = String(booking.farmer_id) === String(req.user.id);
+  const isWorker = String(booking.worker_id) === String(req.user.id);
+  if (!isFarmer && !isWorker && req.user.role !== 'admin') {
     throw new AppError('Not authorized to update this labour booking.', 403);
   }
 
@@ -581,303 +600,121 @@ export const updateLabourBookingStatus = asyncHandler(async (req, res) => {
     Accepted: ['In Progress', 'Completed', 'Cancelled'],
     'In Progress': ['Completed'],
   };
-  const allowed = validTransitions[booking.bookingStatus] || [];
-  if (!allowed.includes(bookingStatus)) {
-    throw new AppError(
-      `Cannot transition booking from ${booking.bookingStatus} to ${bookingStatus}.`,
-      400
-    );
+  if (!(validTransitions[booking.status] || []).includes(nextStatus)) {
+    throw new AppError(`Cannot transition booking from ${booking.status} to ${nextStatus}.`, 400);
   }
 
-  booking.bookingStatus = bookingStatus;
-  await booking.save();
+  const { data: updated, error: updErr } = await supabase
+    .from('labour_bookings')
+    .update({ status: nextStatus })
+    .eq('id', bookingId)
+    .select('*')
+    .single();
 
-  if (bookingStatus === 'Cancelled') {
-    const parentReq = await LabourRequest.findById(booking.labourRequestId);
-    if (parentReq && !['Completed', 'Cancelled'].includes(parentReq.status)) {
-      const siblingCount = await LabourApplication.countDocuments({
-        requestId: parentReq._id,
-        status: 'Pending',
-      });
-      const acceptedApp = await LabourApplication.findOne({
-        requestId: parentReq._id,
-        workerId: booking.workerId,
-      });
-      const releaseCount = Math.max(1, Number(acceptedApp?.numberOfWorkers) || 1);
-      if (acceptedApp && acceptedApp.status === 'Accepted') {
-        acceptedApp.status = 'Withdrawn';
-        await acceptedApp.save();
-      }
-      parentReq.workersAccepted = Math.max(0, (parentReq.workersAccepted || 1) - releaseCount);
-      parentReq.acceptedWorkerIds = (parentReq.acceptedWorkerIds || []).filter(
-        (id) => id.toString() !== booking.workerId.toString()
-      );
-      parentReq.remainingVacancies = Math.max(
-        0,
-        parentReq.workersRequired - parentReq.workersAccepted
-      );
-      parentReq.status = computeStatusFromCounts(
-        parentReq.workersAccepted,
-        parentReq.workersRequired,
-        parentReq.status,
-        siblingCount > 0
-      );
-      await parentReq.save();
-    }
-  } else if (bookingStatus === 'In Progress' || bookingStatus === 'Completed') {
-    const siblingBookings = await LabourBooking.find({
-      labourRequestId: booking.labourRequestId,
-      bookingStatus: { $ne: 'Cancelled' },
-    }).lean();
-
-    const allCompleted =
-      siblingBookings.length > 0 &&
-      siblingBookings.every((b) => b.bookingStatus === 'Completed');
-
-    await LabourRequest.findByIdAndUpdate(booking.labourRequestId, {
-      status: allCompleted ? 'Completed' : 'In Progress',
-    });
-  }
-
-  res.json({ success: true, data: booking });
+  if (updErr) throw mapSupabaseError(updErr, 'Could not update labour booking.');
+  res.json({ success: true, data: formatLabourBookingRow(updated) });
 });
 
-export const getRequestApplications = asyncHandler(async (req, res) => {
-  const request = await LabourRequest.findById(req.params.id).lean();
-  if (!request) {
-    throw new AppError('Labour request not found.', 404);
+async function handleAppDecision({ request, application, status, reviewerUser, supabase }) {
+  if (String(request.farmer_id) !== String(reviewerUser.id) && reviewerUser.role !== 'admin') {
+    throw new AppError('Only the farmer who posted this request can respond.', 403);
   }
-  if (
-    request.farmerId.toString() !== req.user._id.toString() &&
-    req.user.role !== 'admin'
-  ) {
-    throw new AppError('Only the request owner can view applications.', 403);
-  }
-  const applications = await LabourApplication.find({ requestId: request._id })
-    .populate('workerId', 'name phone village district skills experience availability')
-    .sort({ appliedAt: -1 });
-  res.json({ success: true, count: applications.length, data: applications });
-});
-
-export const applyToLabourRequest = asyncHandler(async (req, res) => {
-  const { message = '', numberOfWorkers = 1 } = req.body;
-  const request = await LabourRequest.findById(req.params.id);
-
-  if (!request) {
-    throw new AppError('Labour request not found.', 404);
-  }
-  if (request.farmerId.toString() === req.user._id.toString()) {
-    throw new AppError('You cannot apply to your own labour request.', 400);
-  }
-  if (!OPEN_STATUSES.includes(request.status)) {
-    throw new AppError('This labour request is no longer accepting applications.', 400);
-  }
-  if (request.workersAccepted >= request.workersRequired) {
-    throw new AppError('All required worker positions are already filled.', 409);
-  }
-
-  const workersNum = Number(numberOfWorkers) || 1;
-  if (!Number.isInteger(workersNum) || workersNum < 1) {
-    throw new AppError('Number of workers offered must be a positive whole number.', 400);
-  }
-
-  const existing = await LabourApplication.findOne({
-    requestId: request._id,
-    workerId: req.user._id,
-  });
-  if (existing) {
-    throw new AppError('You have already applied to this labour request.', 409);
-  }
-
-  try {
-    const application = await LabourApplication.create({
-      requestId: request._id,
-      workerId: req.user._id,
-      workerName: req.user.name,
-      workerPhone: req.user.phone,
-      workerVillage: [req.user.village, req.user.district].filter(Boolean).join(', '),
-      skills: req.user.skills || [],
-      experience: req.user.experience || '',
-      numberOfWorkers: workersNum,
-      message,
-      status: 'Pending',
-    });
-
-    if (['Open', 'Pending'].includes(request.status) && request.workersAccepted === 0) {
-      request.status = 'Applications Received';
-      await request.save();
-    }
-
-    res.status(201).json({
-      success: true,
-      data: application,
-    });
-  } catch (err) {
-    if (err.code === 11000) {
-      throw new AppError('You have already applied to this labour request.', 409);
-    }
-    throw err;
-  }
-});
-
-async function processApplicationDecision({ request, application, status, reviewerUser }) {
   if (!['Accepted', 'Rejected'].includes(status)) {
-    throw new AppError('Application status must be Accepted or Rejected.', 400);
-  }
-  if (
-    request.farmerId.toString() !== reviewerUser._id.toString() &&
-    reviewerUser.role !== 'admin'
-  ) {
-    throw new AppError('Only the farmer who posted this request can review applications.', 403);
+    throw new AppError('Decision must be Accepted or Rejected.', 400);
   }
   if (application.status !== 'Pending') {
-    throw new AppError(`Application is already ${application.status}.`, 400);
+    throw new AppError('This application has already been processed.', 400);
   }
 
   if (status === 'Accepted') {
-    const offerCount = Math.max(1, Number(application.numberOfWorkers) || 1);
-    const updatedReq = await LabourRequest.findOneAndUpdate(
-      {
-        _id: request._id,
-        status: { $in: OPEN_STATUSES },
-        $expr: {
-          $lte: [{ $add: ['$workersAccepted', offerCount] }, '$workersRequired'],
-        },
-      },
-      {
-        $inc: { workersAccepted: offerCount },
-        $addToSet: { acceptedWorkerIds: application.workerId },
-      },
-      { new: true }
-    );
-
-    if (!updatedReq) {
-      throw new AppError(
-        'Cannot accept application: insufficient remaining worker capacity.',
-        409
-      );
+    const offerCount = Math.max(1, Number(application.workers_offered) || 1);
+    const nextAccepted = Number(request.workers_accepted) + offerCount;
+    if (nextAccepted > Number(request.workers_required)) {
+      throw new AppError('Cannot accept application: insufficient remaining capacity.', 409);
     }
 
-    updatedReq.remainingVacancies = Math.max(
-      0,
-      updatedReq.workersRequired - updatedReq.workersAccepted
-    );
-    const remainingPending = await LabourApplication.exists({
-      requestId: updatedReq._id,
-      _id: { $ne: application._id },
-      status: 'Pending',
-    });
-    updatedReq.status = computeStatusFromCounts(
-      updatedReq.workersAccepted,
-      updatedReq.workersRequired,
-      updatedReq.status,
-      Boolean(remainingPending)
-    );
-    await updatedReq.save();
+    await supabase
+      .from('labour_requests')
+      .update({
+        workers_accepted: nextAccepted,
+        remaining_vacancies: Math.max(0, Number(request.workers_required) - nextAccepted),
+        status: computeStatusFromCounts(nextAccepted, request.workers_required, request.status),
+      })
+      .eq('id', request.id);
 
-    application.status = 'Accepted';
-    await application.save();
-
-    await LabourBooking.findOneAndUpdate(
-      { labourRequestId: updatedReq._id, workerId: application.workerId },
-      {
-        bookingCode: generateCode('LB'),
-        labourRequestId: updatedReq._id,
-        farmerId: updatedReq.farmerId,
-        workerId: application.workerId,
-        bookingStatus: 'Accepted',
-      },
-      { upsert: true }
-    );
-
-    return { application, request: updatedReq };
+    await supabase
+      .from('labour_bookings')
+      .upsert(
+        {
+          booking_code: generateCode('LB'),
+          request_id: request.id,
+          farmer_id: request.farmer_id,
+          worker_id: application.labour_provider_id,
+          accepted_date: request.start_date,
+          daily_wage: request.daily_wage,
+          duration_days: request.duration_days,
+          status: 'Accepted',
+        },
+        { onConflict: 'request_id,worker_id' }
+      );
   }
 
-  application.status = 'Rejected';
-  await application.save();
-  return { application, request };
+  const { data: updatedApp } = await supabase
+    .from('labour_applications')
+    .update({ status })
+    .eq('id', application.id)
+    .select('*')
+    .single();
+
+  return { application: formatApplicationRow(updatedApp || application), request: formatLabourRequestRow(request) };
 }
 
 export const respondToApplication = asyncHandler(async (req, res) => {
-  const { status } = req.body;
-  const request = await LabourRequest.findById(req.params.id);
-  if (!request) {
-    throw new AppError('Labour request not found.', 404);
-  }
-  const application = await LabourApplication.findOne({
-    _id: req.params.appId,
-    requestId: request._id,
-  });
-  if (!application) {
-    throw new AppError('Application not found.', 404);
-  }
+  const reqId = assertValidUuid(req.params.id, 'request id');
+  const appId = assertValidUuid(req.params.appId, 'application id');
+  const supabase = getSupabaseClient();
 
-  const result = await processApplicationDecision({
-    request,
-    application,
-    status,
+  const [reqRes, appRes] = await Promise.all([
+    supabase.from('labour_requests').select('*').eq('id', reqId).maybeSingle(),
+    supabase.from('labour_applications').select('*').eq('id', appId).eq('request_id', reqId).maybeSingle(),
+  ]);
+  if (!reqRes.data) throw new AppError('Labour request not found.', 404);
+  if (!appRes.data) throw new AppError('Application not found.', 404);
+
+  const result = await handleAppDecision({
+    request: reqRes.data,
+    application: appRes.data,
+    status: req.body?.status,
     reviewerUser: req.user,
+    supabase,
   });
   res.json({ success: true, data: result });
 });
 
 export const respondToApplicationById = asyncHandler(async (req, res) => {
-  const { status } = req.body;
-  const application = await LabourApplication.findById(req.params.id);
-  if (!application) {
-    throw new AppError('Application not found.', 404);
-  }
-  const request = await LabourRequest.findById(application.requestId);
-  if (!request) {
-    throw new AppError('Parent labour request not found.', 404);
-  }
+  const appId = assertValidUuid(req.params.id, 'application id');
+  const supabase = getSupabaseClient();
 
-  const result = await processApplicationDecision({
-    request,
-    application,
-    status,
+  const { data: appRow } = await supabase
+    .from('labour_applications')
+    .select('*')
+    .eq('id', appId)
+    .maybeSingle();
+  if (!appRow) throw new AppError('Application not found.', 404);
+
+  const { data: reqRow } = await supabase
+    .from('labour_requests')
+    .select('*')
+    .eq('id', appRow.request_id)
+    .maybeSingle();
+  if (!reqRow) throw new AppError('Parent labour request not found.', 404);
+
+  const result = await handleAppDecision({
+    request: reqRow,
+    application: appRow,
+    status: req.body?.status,
     reviewerUser: req.user,
+    supabase,
   });
   res.json({ success: true, data: result });
-});
-
-export const getMyApplications = asyncHandler(async (req, res) => {
-  const applications = await LabourApplication.find({ workerId: req.user._id })
-    .populate({
-      path: 'requestId',
-      populate: { path: 'farmerId', select: 'name phone village district state' },
-    })
-    .sort({ appliedAt: -1 });
-
-  res.json({
-    success: true,
-    count: applications.length,
-    data: applications,
-  });
-});
-
-export const getWorkerBookings = asyncHandler(async (req, res) => {
-  const bookings = await LabourBooking.find({ workerId: req.user._id })
-    .populate('farmerId', 'name phone village district state')
-    .populate('labourRequestId')
-    .sort({ createdAt: -1 });
-
-  res.json({
-    success: true,
-    count: bookings.length,
-    data: bookings,
-  });
-});
-
-export const getFarmerLabourBookings = asyncHandler(async (req, res) => {
-  const bookings = await LabourBooking.find({ farmerId: req.user._id })
-    .populate('workerId', 'name phone village district skills experience availability')
-    .populate('labourRequestId')
-    .sort({ createdAt: -1 });
-
-  res.json({
-    success: true,
-    count: bookings.length,
-    data: bookings,
-  });
 });

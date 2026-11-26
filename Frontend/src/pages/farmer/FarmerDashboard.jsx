@@ -19,12 +19,16 @@ import {
   Loader2,
   ClipboardList,
   Settings,
+  Heart,
+  Trash2,
+  AlertCircle,
 } from 'lucide-react';
 import api, { getErrorMessage } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useLocationContext } from '../../context/LocationContext';
 import LocationSelector from '../../components/LocationSelector';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
+import NotificationsPanel from '../../components/NotificationsPanel';
 import { BookingStatusBadge } from '../../components/StatusBadge';
 import { formatCurrency, formatDate } from '../../utils/distance';
 
@@ -35,19 +39,53 @@ export default function FarmerDashboard() {
   const { coords, hasCoords, radius, detectBrowserLocation, detecting } =
     useLocationContext();
   const [stats, setStats] = useState(null);
+  const [favourites, setFavourites] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [notifOpen, setNotifOpen] = useState(false);
 
-  useEffect(() => {
+  function fetchDashboardData() {
     setLoading(true);
-    api
-      .get('/discovery/dashboard', {
+    setLoadError('');
+    Promise.all([
+      api.get('/discovery/dashboard', {
         params: hasCoords ? { lat: coords.lat, lng: coords.lng, radius } : {},
+      }),
+      api.get('/favourites').catch(() => ({ data: { data: [] } })),
+      api.get('/notifications').catch(() => ({ data: { data: [], unreadCount: 0 } })),
+    ])
+      .then(([dashRes, favRes, notifRes]) => {
+        setStats(dashRes.data.data);
+        setFavourites(favRes.data?.data || []);
+        setNotifications(notifRes.data?.data || dashRes.data?.data?.notifications || []);
+        setUnreadNotificationsCount(
+          notifRes.data?.unreadCount ?? dashRes.data?.data?.unreadNotificationsCount ?? 0
+        );
       })
-      .then((res) => setStats(res.data.data))
-      .catch(() => setStats(null))
+      .catch((err) => {
+        setStats(null);
+        setLoadError(
+          getErrorMessage(err, t('dashboard.loadError', 'We could not load the dashboard data. Please try again.'))
+        );
+      })
       .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    fetchDashboardData();
   }, [coords?.lat, coords?.lng, hasCoords, radius]);
+
+  async function handleRemoveFavourite(favId) {
+    try {
+      await api.delete(`/favourites/${favId}`);
+      setFavourites((prev) => prev.filter((f) => f.id !== favId && f.listing_id !== favId));
+      toast.success(t('favourites.removed', 'Removed from saved listings.'));
+    } catch (err) {
+      toast.error(getErrorMessage(err, t('common.errorGeneric')));
+    }
+  }
 
   async function handleRefreshProfileGps() {
     const captured = await detectBrowserLocation();
@@ -74,7 +112,7 @@ export default function FarmerDashboard() {
 
   const pendingAppsCount = stats?.pendingApplicationsCount || 0;
   const upcomingCount = (stats?.upcomingBookings || []).length;
-  const totalAlerts = pendingAppsCount + upcomingCount;
+  const totalAlerts = unreadNotificationsCount || pendingAppsCount + upcomingCount;
 
   const actionCards = [
     {
@@ -317,94 +355,223 @@ export default function FarmerDashboard() {
         <div className="py-10 text-center text-sm text-slate-500">
           {t('common.loading')}
         </div>
+      ) : loadError ? (
+        <div className="bg-rose-50 border border-rose-200 rounded-2xl p-6 text-center space-y-3">
+          <div className="inline-flex items-center gap-2 text-rose-800 font-semibold text-sm">
+            <AlertCircle className="w-5 h-5" />
+            {loadError}
+          </div>
+          <div>
+            <button
+              type="button"
+              onClick={fetchDashboardData}
+              className="px-4 py-2 rounded-xl bg-rose-700 text-white text-xs font-bold hover:bg-rose-800"
+            >
+              {t('common.retry')}
+            </button>
+          </div>
+        </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* My Labour Requests */}
-          <div className="bg-white rounded-2xl border border-earth-200 p-6 shadow-sm space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-slate-900">
-                {t('dashboard.myLabourRequests')}
-              </h2>
-              <Link
-                to="/farmer/request-labour"
-                className="text-xs font-bold text-forest-700 hover:underline inline-flex items-center gap-1"
-              >
-                {t('dashboard.viewAll')} <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
-
-            {(stats?.labourRequests || []).length === 0 ? (
-              <p className="text-sm text-slate-500 py-6 text-center">
-                {t('dashboard.noLabourRequests')}
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {stats.labourRequests.map((req) => (
-                  <Link
-                    key={req._id}
-                    to="/farmer/request-labour"
-                    className="flex items-center justify-between p-3.5 rounded-xl border border-earth-200 hover:bg-earth-50 transition-colors gap-2"
-                  >
-                    <div>
-                      <div className="font-bold text-sm text-slate-900">
-                        {t(`categories.labour.${req.category}`, req.category)} ·{' '}
-                        <span className="text-xs font-mono text-slate-500">
-                          {req.requestCode}
-                        </span>
-                      </div>
-                      <div className="text-xs text-slate-600 mt-0.5">
-                        {req.workersAccepted}/{req.workersRequired} {t('common.workers')} ·{' '}
-                        {formatDate(req.startDate, i18n.language)} ·{' '}
-                        {formatCurrency(req.estimatedTotal, i18n.language)}
-                      </div>
-                    </div>
-                    <BookingStatusBadge status={req.status} />
-                  </Link>
-                ))}
+        <div className="space-y-6">
+          {/* Live Service Availability Overview */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <Link
+              to="/machinery"
+              className="bg-white rounded-2xl border border-earth-200 p-4 shadow-sm hover:border-forest-400"
+            >
+              <div className="text-xs font-semibold uppercase text-slate-500">
+                {t('nav.machinery')}
               </div>
-            )}
+              <div className="text-2xl font-extrabold text-forest-900 mt-1">
+                {stats?.totalAvailableMachinery ?? 0}
+              </div>
+              <div className="text-xs text-forest-700 mt-0.5">{t('common.available')}</div>
+            </Link>
+            <Link
+              to="/labour"
+              className="bg-white rounded-2xl border border-earth-200 p-4 shadow-sm hover:border-forest-400"
+            >
+              <div className="text-xs font-semibold uppercase text-slate-500">
+                {t('nav.labour')}
+              </div>
+              <div className="text-2xl font-extrabold text-forest-900 mt-1">
+                {stats?.totalAvailableLabour ?? 0}
+              </div>
+              <div className="text-xs text-forest-700 mt-0.5">{t('common.available')}</div>
+            </Link>
+            <Link
+              to="/facilities"
+              className="bg-white rounded-2xl border border-earth-200 p-4 shadow-sm hover:border-forest-400"
+            >
+              <div className="text-xs font-semibold uppercase text-slate-500">
+                {t('nav.facilities')}
+              </div>
+              <div className="text-2xl font-extrabold text-forest-900 mt-1">
+                {stats?.totalAvailableFacilities ?? 0}
+              </div>
+              <div className="text-xs text-forest-700 mt-0.5">{t('common.available')}</div>
+            </Link>
+            <div className="bg-white rounded-2xl border border-earth-200 p-4 shadow-sm">
+              <div className="text-xs font-semibold uppercase text-slate-500">
+                {t('favourites.title', 'Saved Listings')}
+              </div>
+              <div className="text-2xl font-extrabold text-rose-700 mt-1">
+                {favourites.length}
+              </div>
+              <div className="text-xs text-slate-500 mt-0.5">{t('nav.services')}</div>
+            </div>
           </div>
 
-          {/* Upcoming & Recent Equipment/Facility Bookings */}
-          <div className="bg-white rounded-2xl border border-earth-200 p-6 shadow-sm space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-slate-900">
-                {t('dashboard.upcomingBookings')}
-              </h2>
-              <Link
-                to="/farmer/bookings"
-                className="text-xs font-bold text-forest-700 hover:underline inline-flex items-center gap-1"
-              >
-                {t('dashboard.viewAll')} <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* My Labour Requests */}
+            <div className="bg-white rounded-2xl border border-earth-200 p-6 shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-bold text-slate-900">
+                  {t('dashboard.myLabourRequests')}
+                </h2>
+                <Link
+                  to="/farmer/request-labour"
+                  className="text-xs font-bold text-forest-700 hover:underline inline-flex items-center gap-1"
+                >
+                  {t('dashboard.viewAll')} <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+
+              {(stats?.labourRequests || []).length === 0 ? (
+                <p className="text-sm text-slate-500 py-6 text-center">
+                  {t('dashboard.noLabourRequests')}
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {stats.labourRequests.map((req) => (
+                    <Link
+                      key={req._id}
+                      to="/farmer/request-labour"
+                      className="flex items-center justify-between p-3.5 rounded-xl border border-earth-200 hover:bg-earth-50 transition-colors gap-2"
+                    >
+                      <div>
+                        <div className="font-bold text-sm text-slate-900">
+                          {t(`categories.labour.${req.category}`, req.category)} ·{' '}
+                          <span className="text-xs font-mono text-slate-500">
+                            {req.requestCode}
+                          </span>
+                        </div>
+                        <div className="text-xs text-slate-600 mt-0.5">
+                          {req.workersAccepted}/{req.workersRequired} {t('common.workers')} ·{' '}
+                          {formatDate(req.startDate, i18n.language)} ·{' '}
+                          {formatCurrency(req.estimatedTotal, i18n.language)}
+                        </div>
+                      </div>
+                      <BookingStatusBadge status={req.status} />
+                    </Link>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {(stats?.recentActivity || []).length === 0 ? (
-              <p className="text-sm text-slate-500 py-6 text-center">
-                {t('dashboard.noBookings')}
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {stats.recentActivity.slice(0, 4).map((b) => (
-                  <Link
-                    key={b._id}
-                    to={`/bookings/${b._id}`}
-                    className="flex items-center justify-between p-3.5 rounded-xl border border-earth-200 hover:bg-earth-50 transition-colors gap-2"
-                  >
-                    <div>
-                      <div className="font-semibold text-sm text-slate-900">
-                        {b.serviceName}
-                      </div>
-                      <div className="text-xs text-slate-500 mt-0.5">
-                        {formatDate(b.bookingDate, i18n.language)} ·{' '}
-                        {formatCurrency(b.estimatedCost, i18n.language)}
-                      </div>
-                    </div>
-                    <BookingStatusBadge status={b.status} />
-                  </Link>
-                ))}
+            {/* Upcoming & Recent Equipment/Facility Bookings */}
+            <div className="bg-white rounded-2xl border border-earth-200 p-6 shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-bold text-slate-900">
+                  {t('dashboard.upcomingBookings')}
+                </h2>
+                <Link
+                  to="/farmer/bookings"
+                  className="text-xs font-bold text-forest-700 hover:underline inline-flex items-center gap-1"
+                >
+                  {t('dashboard.viewAll')} <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
               </div>
-            )}
+
+              {(stats?.recentActivity || []).length === 0 ? (
+                <p className="text-sm text-slate-500 py-6 text-center">
+                  {t('dashboard.noBookings')}
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {stats.recentActivity.slice(0, 4).map((b) => (
+                    <Link
+                      key={b._id}
+                      to={`/bookings/${b._id}`}
+                      className="flex items-center justify-between p-3.5 rounded-xl border border-earth-200 hover:bg-earth-50 transition-colors gap-2"
+                    >
+                      <div>
+                        <div className="font-semibold text-sm text-slate-900">
+                          {b.serviceName}
+                        </div>
+                        <div className="text-xs text-slate-500 mt-0.5">
+                          {formatDate(b.bookingDate, i18n.language)} ·{' '}
+                          {formatCurrency(b.estimatedCost, i18n.language)}
+                        </div>
+                      </div>
+                      <BookingStatusBadge status={b.status} />
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Saved Listings / Favourites */}
+            <div className="bg-white rounded-2xl border border-earth-200 p-6 shadow-sm space-y-4">
+              <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                <Heart className="w-5 h-5 text-rose-500 fill-rose-500" />
+                {t('favourites.title', 'Saved Listings')}
+              </h2>
+
+              {favourites.length === 0 ? (
+                <p className="text-sm text-slate-500 py-4 text-center">
+                  {t('favourites.empty', 'You have not saved any machinery, labour, or facilities yet.')}
+                </p>
+              ) : (
+                <div className="space-y-2.5">
+                  {favourites.map((fav) => {
+                    const detailPath =
+                      fav.listing_type === 'equipment'
+                        ? `/machinery/${fav.listing_id}`
+                        : fav.listing_type === 'labour'
+                          ? `/labour/${fav.listing_id}`
+                          : `/facilities/${fav.listing_id}`;
+                    const title =
+                      fav.listing?.name ||
+                      fav.listing?.title ||
+                      fav.listing_type;
+                    return (
+                      <div
+                        key={fav.id}
+                        className="flex items-center justify-between gap-3 p-3 rounded-xl border border-earth-200 hover:bg-earth-50"
+                      >
+                        <Link to={detailPath} className="min-w-0 flex-1">
+                          <div className="font-semibold text-sm text-slate-900 truncate">
+                            {title}
+                          </div>
+                          <div className="text-xs text-slate-500 uppercase">
+                            {fav.listing_type}
+                            {fav.listing?.village ? ` · ${fav.listing.village}` : ''}
+                          </div>
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveFavourite(fav.id)}
+                          aria-label={t('favourites.removeLabel', 'Remove saved listing')}
+                          className="p-2 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Real Database Notifications */}
+            <NotificationsPanel
+              notifications={notifications}
+              unreadCount={unreadNotificationsCount}
+              onRefresh={fetchDashboardData}
+            />
           </div>
         </div>
       )}
