@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Warehouse, Search, MapPin, List, Map as MapIcon, Clock } from 'lucide-react';
-import api from '../../services/api';
+import api, { getErrorMessage } from '../../services/api';
 import { useLocationContext } from '../../context/LocationContext';
 import LocationSelector from '../../components/LocationSelector';
 import ServiceMap from '../../components/ServiceMap';
+import FavouriteButton from '../../components/FavouriteButton';
 import { AvailabilityBadge } from '../../components/StatusBadge';
 import { FACILITY_CATEGORIES } from '../../utils/constants';
 import {
@@ -19,14 +20,18 @@ export default function FacilityDiscoveryPage() {
   const { coords, hasCoords, radius, regionFilter } = useLocationContext();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [viewMode, setViewMode] = useState('list');
   const [category, setCategory] = useState('All');
   const [district, setDistrict] = useState('');
   const [minCapacity, setMinCapacity] = useState('');
   const [search, setSearch] = useState('');
 
-  useEffect(() => {
+  function fetchFacilities() {
     setLoading(true);
+    setErrorMsg('');
     const effectiveDistrict = district || (!hasCoords ? regionFilter.district : '');
     api
       .get('/facilities', {
@@ -35,17 +40,32 @@ export default function FacilityDiscoveryPage() {
           district: effectiveDistrict,
           minCapacity,
           search,
+          page,
+          limit: 12,
           ...(hasCoords ? { lat: coords.lat, lng: coords.lng, radius } : {}),
         },
       })
-      .then((res) => setItems(res.data.data || []))
-      .catch(() => setItems([]))
+      .then((res) => {
+        setItems(res.data.data || []);
+        setTotalPages(res.data.totalPages || 1);
+      })
+      .catch((err) => {
+        setItems([]);
+        setErrorMsg(
+          getErrorMessage(err, t('marketplace.loadError', 'We could not load the services. Please try again.'))
+        );
+      })
       .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    fetchFacilities();
   }, [
     category,
     district,
     minCapacity,
     search,
+    page,
     coords?.lat,
     coords?.lng,
     hasCoords,
@@ -138,6 +158,17 @@ export default function FacilityDiscoveryPage() {
         <div className="py-16 text-center text-sm text-slate-500">
           {t('common.loading')}
         </div>
+      ) : errorMsg ? (
+        <div className="bg-rose-50 border border-rose-200 rounded-2xl p-8 text-center space-y-3">
+          <p className="font-semibold text-rose-800 text-sm">{errorMsg}</p>
+          <button
+            type="button"
+            onClick={fetchFacilities}
+            className="px-4 py-2 rounded-xl bg-rose-700 text-white text-xs font-bold hover:bg-rose-800"
+          >
+            {t('common.retry')}
+          </button>
+        </div>
       ) : viewMode === 'map' ? (
         <ServiceMap
           items={items}
@@ -210,15 +241,42 @@ export default function FacilityDiscoveryPage() {
                   </span>
                   <span className="text-xs text-slate-500"> {item.priceUnit}</span>
                 </div>
-                <Link
-                  to={`/facilities/${item._id}`}
-                  className="px-4 py-2 rounded-xl bg-forest-700 hover:bg-forest-800 text-white text-xs font-semibold"
-                >
-                  {t('common.bookNow')}
-                </Link>
+                <div className="flex items-center gap-2">
+                  <FavouriteButton listingType="facility" listingId={item._id} />
+                  <Link
+                    to={`/facilities/${item._id}`}
+                    className="px-4 py-2 rounded-xl bg-forest-700 hover:bg-forest-800 text-white text-xs font-semibold"
+                  >
+                    {t('common.bookNow')}
+                  </Link>
+                </div>
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {!loading && totalPages > 1 && viewMode === 'list' && (
+        <div className="flex items-center justify-center gap-3 pt-2">
+          <button
+            type="button"
+            disabled={page <= 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            className="px-4 min-h-[42px] rounded-xl border border-earth-200 bg-white text-sm font-semibold disabled:opacity-50"
+          >
+            {t('common.back')}
+          </button>
+          <span className="text-xs font-semibold text-slate-600">
+            {page} / {totalPages}
+          </span>
+          <button
+            type="button"
+            disabled={page >= totalPages}
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            className="px-4 min-h-[42px] rounded-xl border border-earth-200 bg-white text-sm font-semibold disabled:opacity-50"
+          >
+            {t('common.continue')}
+          </button>
         </div>
       )}
     </div>

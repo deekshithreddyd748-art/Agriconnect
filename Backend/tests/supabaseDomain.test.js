@@ -3,6 +3,10 @@ import test from 'node:test';
 import { handleCreateBooking } from '../controllers/bookingController.js';
 import {
   assertValidUuid,
+  formatEquipmentRow,
+  formatFacilityRow,
+  formatLabourRow,
+  formatProfileRow,
   isValidUuid,
   mapSupabaseError,
   parsePagination,
@@ -81,13 +85,22 @@ test('UUID validation and Supabase error mapping prevent raw SQL leaks', () => {
   const invalidTrans = mapSupabaseError({ message: 'INVALID_TRANSITION' });
   assert.equal(invalidTrans.statusCode, 400);
 
+  const notFound = mapSupabaseError({ message: 'BOOKING_NOT_FOUND' });
+  assert.equal(notFound.statusCode, 404);
+
+  const forbidden = mapSupabaseError({ message: 'BOOKING_FORBIDDEN' });
+  assert.equal(forbidden.statusCode, 403);
+
+  const insCapacity = mapSupabaseError({ message: 'INSUFFICIENT_CAPACITY' });
+  assert.equal(insCapacity.statusCode, 400);
+
   const pageMeta = parsePagination({ page: '2', limit: '999' }, 24, 50);
   assert.equal(pageMeta.page, 2);
   assert.equal(pageMeta.limit, 50);
   assert.equal(pageMeta.from, 50);
 });
 
-test('Booking creation rejects past dates, self-bookings, and date conflicts', async () => {
+test('Booking creation rejects past dates, self-bookings, unavailable listings, and date conflicts', async () => {
   const farmer = {
     id: '11111111-1111-4111-8111-111111111101',
     name: 'Ramesh Gowda',
@@ -134,7 +147,20 @@ test('Booking creation rejects past dates, self-bookings, and date conflicts', a
     (err) => err.statusCode === 400
   );
 
-  // 3. Date conflict rejected with 409
+  // 3. Unavailable equipment rejected
+  await assert.rejects(
+    () =>
+      handleCreateBooking({
+        user: farmer,
+        body: { serviceType: 'equipment', serviceId: eqId, bookingDate: futureDate },
+        supabase: createBookingMockSupabase({
+          equipment: { ...equipment, availability_status: false },
+        }),
+      }),
+    (err) => err.statusCode === 400
+  );
+
+  // 4. Date conflict rejected with 409
   await assert.rejects(
     () =>
       handleCreateBooking({
@@ -148,7 +174,7 @@ test('Booking creation rejects past dates, self-bookings, and date conflicts', a
     (err) => err.statusCode === 409
   );
 
-  // 4. Successful creation records Pending booking + provider notification
+  // 5. Successful creation records Pending booking + provider notification
   const mockDb = createBookingMockSupabase({
     equipment,
     existingBookings: [],
@@ -191,4 +217,67 @@ test('Storage service enforces bucket allowlist cleanly', async () => {
       }),
     (err) => err.statusCode === 400
   );
+});
+
+test('Supabase row formatters expose unified fields and redact private contact when requested', () => {
+  const pubProfile = formatProfileRow(
+    {
+      id: '11111111-1111-4111-8111-111111111101',
+      full_name: 'Ramesh Gowda',
+      mobile_number: '9876543210',
+      email: 'ramesh@example.com',
+      role: 'farmer',
+      village: 'Mandya',
+      district: 'Mandya',
+      state: 'Karnataka',
+    },
+    { includePrivate: false }
+  );
+  assert.equal(pubProfile.full_name, 'Ramesh Gowda');
+  assert.equal(pubProfile.mobile_number, undefined);
+  assert.equal(pubProfile.email, undefined);
+
+  const eq = formatEquipmentRow(
+    {
+      id: '22222222-2222-4222-8222-222222222201',
+      owner_id: '11111111-1111-4111-8111-111111111102',
+      equipment_name: 'Tractor',
+      equipment_category: 'Tractors',
+      price: 750,
+      price_unit: 'hour',
+      latitude: 12.5218,
+      longitude: 76.8951,
+      availability_status: true,
+      equipment_images: ['/images/tractor.svg'],
+    },
+    { lat: 12.5218, lng: 76.8951 }
+  );
+  assert.equal(eq._id, eq.id);
+  assert.equal(eq.locationAvailable, true);
+  assert.equal(eq.distanceKm, 0);
+
+  const lb = formatLabourRow({
+    id: '33333333-3333-4333-8333-333333333301',
+    provider_id: '11111111-1111-4111-8111-111111111103',
+    category: 'Harvesting',
+    daily_rate: 500,
+    price_unit: 'day',
+    workers_available: 6,
+    availability_status: true,
+  });
+  assert.equal(lb.pricePerWorker, 500);
+  assert.equal(lb.workersAvailable, 6);
+
+  const fc = formatFacilityRow({
+    id: '44444444-4444-4444-8444-444444444401',
+    owner_id: '11111111-1111-4111-8111-111111111104',
+    facility_name: 'Cold Store',
+    facility_type: 'Cold Storage',
+    capacity: 200,
+    available_capacity: 150,
+    price: 40,
+    availability_status: true,
+  });
+  assert.equal(fc.name, 'Cold Store');
+  assert.equal(fc.availableCapacity, 150);
 });
