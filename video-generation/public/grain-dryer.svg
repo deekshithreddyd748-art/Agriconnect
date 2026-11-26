@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 380" fill="none">
+  <rect width="600" height="380" fill="#FEF8EC"/>
+  <path d="M0 295 Q190 272 410 295 T600 285 L600 380 L0 380 Z" fill="#FDE68A"/>
+  <rect x="175" y="115" width="130" height="170" rx="12" fill="#2D6A4F"/>
+  <polygon points="175,115 240,70 305,115" fill="#1B4332"/>
+  <rect x="335" y="160" width="110" height="125" rx="12" fill="#D97706"/>
+  <path d="M305 215 H335" stroke="#1E293B" stroke-width="12"/>
+  <text x="32" y="48" fill="#6F4E2E" font-family="sans-serif" font-size="22" font-weight="700">GRAIN DRYING UNIT</text>
+</svg>

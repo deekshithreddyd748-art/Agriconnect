@@ -1,0 +1,55 @@
+1
+00:00:00,400 --> 00:00:08,200
+Introducing AgriConnect, a digital platform designed to simplify access to agricultural services
+
+2
+00:00:08,400 --> 00:00:15,800
+and connect Farmers with nearby agricultural service providers.
+
+3
+00:00:18,500 --> 00:00:27,800
+Finding reliable Machinery, available Labour and suitable Facilities can be challenging.
+
+4
+00:00:28,000 --> 00:00:36,200
+AgriConnect brings all these Nearby Services together through one simple platform.
+
+5
+00:00:38,500 --> 00:00:47,500
+Users can enter AgriConnect with a simple mobile interface and choose their exact role.
+
+6
+00:00:47,700 --> 00:00:56,200
+Each role unlocks relevant Nearby Services and tailored dashboard features.
+
+7
+00:00:58,500 --> 00:01:11,500
+Farmers can explore available Machinery, discover Labour and find post-harvest Facilities.
+
+8
+00:01:11,700 --> 00:01:25,000
+Inspect real availability and submit Bookings directly through the AgriConnect platform.
+
+9
+00:01:28,500 --> 00:01:39,500
+AgriConnect empowers equipment owners to manage Machinery listings and availability.
+
+10
+00:01:39,700 --> 00:01:55,500
+Labour providers showcase skills and wages, while Facilities highlight storage capacity.
+
+11
+00:01:58,500 --> 00:02:09,800
+With location-based discovery, explore Nearby Services within your preferred radius.
+
+12
+00:02:10,000 --> 00:02:22,500
+The Bookings system connects Farmers and providers through a clear request workflow.
+
+13
+00:02:25,500 --> 00:02:35,500
+AgriConnect brings essential Machinery, Labour and Facilities closer to rural communities.
+
+14
+00:02:35,700 --> 00:02:43,200
+AgriConnect — connecting Farmers, empowering agriculture. Developed by Team ANOKA.
