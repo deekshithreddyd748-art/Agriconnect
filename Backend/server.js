@@ -8,6 +8,7 @@ import { connectDB } from './config/db.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 import { ensureDemoData } from './seed/seedData.js';
 import authRoutes from './routes/authRoutes.js';
+import profileRoutes from './routes/profileRoutes.js';
 import farmerRoutes from './routes/farmerRoutes.js';
 import equipmentRoutes from './routes/equipmentRoutes.js';
 import labourRoutes from './routes/labourRoutes.js';
@@ -57,6 +58,7 @@ app.get('/api/health', (_req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/profiles', profileRoutes);
 app.use('/api/farmer', farmerRoutes);
 app.use('/api/equipment', equipmentRoutes);
 app.use('/api/labour', labourRoutes);

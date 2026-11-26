@@ -14,11 +14,6 @@ export function AuthProvider({ children }) {
     }
     window.addEventListener('agriconnect:session-expired', handleSessionExpired);
 
-    const token = localStorage.getItem('agriconnect_token');
-    if (!token) {
-      setLoading(false);
-      return () => window.removeEventListener('agriconnect:session-expired', handleSessionExpired);
-    }
     api
       .get('/auth/me')
       .then((res) => setUser(res.data.user))
@@ -31,44 +26,26 @@ export function AuthProvider({ children }) {
     return () => window.removeEventListener('agriconnect:session-expired', handleSessionExpired);
   }, []);
 
-  async function login(email, password) {
-    const res = await api.post('/auth/login', { email, password });
-    localStorage.setItem('agriconnect_token', res.data.token);
-    setUser(res.data.user);
-    return res.data.user;
-  }
-
-  async function register(payload) {
-    const res = await api.post('/auth/register', payload);
-    localStorage.setItem('agriconnect_token', res.data.token);
-    setUser(res.data.user);
-    return res.data.user;
-  }
-
-  async function getOtpStatus() {
-    const res = await api.get('/auth/otp/status');
-    return res.data.data;
-  }
-
-  async function sendOtp(mobileNumber) {
-    const res = await api.post('/auth/send-otp', { mobileNumber });
-    return res.data;
-  }
-
-  async function verifyOtp(mobileNumber, otp) {
-    const res = await api.post('/auth/verify-otp', { mobileNumber, otp });
-    if (!res.data.isNewUser && res.data.token) {
+  async function continueProfile({ fullName, mobileNumber, email, confirmUseExisting = false }) {
+    const res = await api.post('/profiles/continue', {
+      fullName,
+      mobileNumber,
+      email: email || '',
+      confirmUseExisting,
+    });
+    if (res.data?.token && res.data?.user) {
       localStorage.setItem('agriconnect_token', res.data.token);
       setUser(res.data.user);
     }
     return res.data;
   }
 
-  async function completeOtpOnboarding(payload) {
-    const res = await api.post('/auth/complete-farmer-profile', payload);
-    localStorage.setItem('agriconnect_token', res.data.token);
-    setUser(res.data.user);
-    return res.data.user;
+  async function selectProfileRole(profileId, role) {
+    const res = await api.patch(`/profiles/${profileId}/role`, { role });
+    if (res.data?.user) {
+      setUser(res.data.user);
+    }
+    return res.data;
   }
 
   async function updateProfile(payload) {
@@ -89,12 +66,8 @@ export function AuthProvider({ children }) {
       value={{
         user,
         loading,
-        login,
-        register,
-        getOtpStatus,
-        sendOtp,
-        verifyOtp,
-        completeOtpOnboarding,
+        continueProfile,
+        selectProfileRole,
         updateProfile,
         logout,
       }}

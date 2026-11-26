@@ -23,11 +23,13 @@ export default function Navbar() {
 
   const dashboardPath = !user
     ? '/login'
-    : user.role === 'admin'
-      ? '/admin'
-      : PROVIDER_ROLES.includes(user.role)
-        ? '/provider/dashboard'
-        : '/farmer/dashboard';
+    : !user.role
+      ? '/select-role'
+      : user.role === 'admin'
+        ? '/admin'
+        : PROVIDER_ROLES.includes(user.role)
+          ? '/provider/dashboard'
+          : '/farmer/dashboard';
 
   function handleLogout() {
     logout();
@@ -126,7 +128,7 @@ export default function Navbar() {
                         {user.name.split(' ')[0]}
                       </div>
                       <div className="text-[10px] text-slate-500">
-                        {t(`roles.${user.role}`, user.role)}
+                        {user.role ? t(`roles.${user.role}`, user.role) : t('auth.chooseRoleShort')}
                       </div>
                     </div>
                   </Link>
@@ -140,20 +142,12 @@ export default function Navbar() {
                   </button>
                 </>
               ) : (
-                <>
-                  <Link
-                    to="/login"
-                    className="px-4 min-h-[44px] inline-flex items-center rounded-xl text-sm font-semibold text-forest-700 hover:bg-forest-50 transition-colors"
-                  >
-                    {t('nav.login')}
-                  </Link>
-                  <Link
-                    to="/register"
-                    className="px-4 min-h-[44px] inline-flex items-center rounded-xl text-sm font-semibold bg-forest-700 text-white hover:bg-forest-800 shadow-sm transition-colors"
-                  >
-                    {t('nav.register')}
-                  </Link>
-                </>
+                <Link
+                  to="/login"
+                  className="px-4 min-h-[44px] inline-flex items-center rounded-xl text-sm font-semibold bg-forest-700 text-white hover:bg-forest-800 shadow-sm transition-colors"
+                >
+                  {t('nav.continueProfile')}
+                </Link>
               )}
             </div>
 
@@ -258,22 +252,13 @@ export default function Navbar() {
                 </div>
               </>
             ) : (
-              <div className="grid grid-cols-2 gap-2">
-                <Link
-                  to="/login"
-                  onClick={() => setMobileOpen(false)}
-                  className="min-h-[48px] flex items-center justify-center rounded-xl border border-forest-700 text-forest-700 font-semibold text-sm"
-                >
-                  {t('nav.login')}
-                </Link>
-                <Link
-                  to="/register"
-                  onClick={() => setMobileOpen(false)}
-                  className="min-h-[48px] flex items-center justify-center rounded-xl bg-forest-700 text-white font-semibold text-sm"
-                >
-                  {t('nav.register')}
-                </Link>
-              </div>
+              <Link
+                to="/login"
+                onClick={() => setMobileOpen(false)}
+                className="w-full min-h-[48px] flex items-center justify-center rounded-xl bg-forest-700 text-white font-semibold text-sm"
+              >
+                {t('nav.continueProfile')}
+              </Link>
             )}
           </div>
         </div>

@@ -96,13 +96,6 @@ export default function ProfileSettingsPage() {
               </p>
             </div>
           </div>
-
-          {user?.mobileVerified && (
-            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold">
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              {t('auth.verifiedBadge')}
-            </span>
-          )}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">

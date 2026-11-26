@@ -13,6 +13,7 @@ import HowItWorksPage from './pages/public/HowItWorksPage';
 import ServicesPage from './pages/public/ServicesPage';
 import LoginPage from './pages/public/LoginPage';
 import RegisterPage from './pages/public/RegisterPage';
+import RoleSelectionPage from './pages/public/RoleSelectionPage';
 import LabourDemoPage from './pages/public/LabourDemoPage';
 
 import FarmerDashboard from './pages/farmer/FarmerDashboard';
@@ -53,6 +54,7 @@ export default function App() {
                 <Route path="/services" element={<ServicesPage />} />
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />
+                <Route path="/select-role" element={<RoleSelectionPage />} />
                 <Route path="/labour-demo" element={<LabourDemoPage />} />
 
                 {/* Discovery Routes */}

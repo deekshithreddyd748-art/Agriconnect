@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import {
@@ -12,6 +12,8 @@ import {
   MapPin,
   User as UserIcon,
   ArrowRight,
+  ArrowLeft,
+  Home,
   PlusCircle,
   RefreshCw,
   Loader2,
@@ -29,6 +31,7 @@ import { formatCurrency, formatDate } from '../../utils/distance';
 export default function FarmerDashboard() {
   const { user, updateProfile } = useAuth();
   const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
   const { coords, hasCoords, radius, detectBrowserLocation, detecting } =
     useLocationContext();
   const [stats, setStats] = useState(null);
@@ -138,6 +141,24 @@ export default function FarmerDashboard() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="inline-flex items-center gap-1.5 px-3 min-h-[44px] rounded-xl border border-earth-200 bg-white text-sm font-semibold text-slate-700 hover:bg-earth-50"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          {t('common.back')}
+        </button>
+        <Link
+          to="/"
+          className="inline-flex items-center gap-1.5 px-3 min-h-[44px] rounded-xl border border-earth-200 bg-white text-sm font-semibold text-slate-700 hover:bg-earth-50"
+        >
+          <Home className="w-4 h-4 text-forest-700" />
+          {t('common.home')}
+        </Link>
+      </div>
+
       {/* Top Farmer Header Bar */}
       <div className="bg-white rounded-3xl border border-earth-200 p-4 sm:p-6 shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">

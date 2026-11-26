@@ -10,8 +10,8 @@
     "howItWorks": "எப்படி செயல்படுகிறது",
     "about": "எங்களைப் பற்றி",
     "services": "சேவைகள்",
-    "login": "உள்நுழைக",
-    "register": "AgriConnect இல் சேரவும்",
+    "login": "Continue",
+    "register": "Get Started",
     "dashboard": "டாஷ்போர்டு",
     "requestLabour": "தொழிலாளர்களைக் கோரவும்",
     "myBookings": "என் முன்பதிவுகள்",
@@ -22,7 +22,8 @@
     "profile": "சுயவிவரம்",
     "logout": "வெளியேறு",
     "language": "மொழி",
-    "toggleMenu": "பட்டியலைத் திறக்கவும்"
+    "toggleMenu": "பட்டியலைத் திறக்கவும்",
+    "continueProfile": "Start / Continue"
   },
   "roles": {
     "farmer": "விவசாயி",
@@ -195,7 +196,7 @@
     "step4VerifySubtitle": "+91 {{mobile}} க்கு அனுப்பப்பட்ட 6 இலக்க குறியீட்டை உள்ளிடவும்.",
     "step5ProfileTitle": "உங்கள் அடிப்படை சுயவிவரத்தை முடிக்கவும்",
     "step5ProfileSubtitle": "அருகிலுள்ள தொழிலாளர்கள் மற்றும் இயந்திர உரிமையாளர்கள் உங்களைக் கண்டறிய சில விவரங்கள்.",
-    "mobileLabel": "10 இலக்க மொபைல் எண்",
+    "mobileLabel": "Mobile Number",
     "mobilePlaceholder": "எ.கா: 9876543210",
     "sendOtp": "OTP அனுப்புக",
     "sendingOtp": "SMS OTP அனுப்பப்படுகிறது...",
@@ -213,7 +214,7 @@
     "useEmailLogin": "மின்னஞ்சல் உள்நுழைவைப் பயன்படுத்து",
     "verifiedBadge": "மொபைல் சரிபார்க்கப்பட்டது",
     "fullName": "முழுப் பெயர்",
-    "fullNamePlaceholder": "உங்கள் முழுப் பெயரை உள்ளிடவும்",
+    "fullNamePlaceholder": "e.g., Ramesh Gowda",
     "village": "கிராமம் / நகரம்",
     "villagePlaceholder": "எ.கா: தஞ்சாவூர்",
     "district": "மாவட்டம்",
@@ -255,14 +256,43 @@
     "otpVerifyFailed": "தவறான அல்லது காலாவதியான OTP.",
     "newVerifiedPrompt": "மொபைல் சரிபார்க்கப்பட்டது! தொடர உங்கள் சுருக்கமான சுயவிவரத்தை நிரப்பவும்.",
     "roles": {
-      "farmerTitle": "விவசாயி",
-      "farmerDesc": "உங்கள் கிராமம் அருகே தொழிலாளர்களைக் கோரவும், டிராக்டர் வாடகை & சேமிப்பு பதிவு செய்யவும்.",
-      "labourTitle": "வேளாண் தொழிலாளர்",
-      "labourDesc": "அருகிலுள்ள பண்ணை வேலைகளைக் கண்டறிந்து, ஏற்று தினக்கூலி சம்பாதிக்கவும்.",
-      "equipmentTitle": "இயந்திர உரிமையாளர்",
-      "equipmentDesc": "உள்ளூர் வாடகை கோரிக்கைகளைப் பெற டிராக்டர்கள் மற்றும் இயந்திரங்களைப் பட்டியலிடவும்.",
-      "facilityTitle": "சேமிப்பு நிலைய உரிமையாளர்",
-      "facilityDesc": "குளிர்பதனக் கிடங்கு, தானிய கிடங்கு மற்றும் உலர்த்தும் வசதிகளை வழங்கவும்."
+      "farmerTitle": "Farmer",
+      "farmerDesc": "Hire equipment, hire labour, and store produce",
+      "labourTitle": "Labour Provider",
+      "labourDesc": "Offer skilled or general farm labour services",
+      "equipmentTitle": "Equipment Owner",
+      "equipmentDesc": "List tractors, harvesters, and implements for rent",
+      "facilityTitle": "Facility Owner",
+      "facilityDesc": "List storage, cold storage, and processing facilities"
+    },
+    "profileEntryTitle": "Enter your name and mobile number to continue",
+    "profileEntrySubtitle": "No password or OTP required. Returning mobile numbers open your existing AgriConnect profile automatically.",
+    "demoNotice": "Quick profile identification (Demo mode — no SMS OTP or password verification required).",
+    "fullNameLabel": "Full Name",
+    "mobileTenDigitsHint": "Enter your 10-digit Indian mobile number (starts with 6–9).",
+    "emailOptionalLabel": "Email Address (Optional)",
+    "emailOptionalPlaceholder": "Optional — e.g., name@example.com",
+    "existingProfileFound": "An existing profile was found for this mobile number.",
+    "existingProfilePreservedHint": "Your previously saved name, email, and role were preserved and not overwritten.",
+    "savedRoleLabel": "Saved Role",
+    "continueExistingProfile": "Continue with Existing Profile",
+    "editDetails": "Change Number",
+    "profileCreatedToast": "Profile saved, {{name}}! Choose your role to continue.",
+    "profileSubmitFailed": "Unable to continue with your profile right now.",
+    "tryLabourDemo": "Try Interactive Labour Demo",
+    "chooseRoleTitle": "Select Your Role on AgriConnect",
+    "chooseRoleSubtitle": "Choose how you want to use AgriConnect. You can explore matching tools on your dashboard.",
+    "chooseRoleShort": "Select Role",
+    "greetingUser": "Namaste, {{name}}",
+    "switchMobile": "Use Another Mobile",
+    "continueToDashboard": "Continue to Dashboard",
+    "roleSavedSuccess": "Welcome! Entering {{role}} dashboard.",
+    "roleSaveFailed": "Could not save your selected role.",
+    "errors": {
+      "fullNameRequired": "Please enter your full name (at least 2 letters).",
+      "fullNameTooLong": "Full name must be under 100 characters.",
+      "mobileInvalid": "Please enter a valid 10-digit Indian mobile number starting with 6–9.",
+      "emailInvalid": "Please enter a valid email address or leave this field blank."
     }
   },
   "dashboard": {
@@ -585,7 +615,10 @@
     "rejectBookingBtn": "நிராகரி",
     "completeBookingBtn": "முடிந்தது எனக் குறி",
     "noListings": "நீங்கள் இன்னும் எந்தப் பட்டியலையும் உருவாக்கவில்லை.",
-    "noIncomingBookings": "இன்னும் முன்பதிவு கோரிக்கைகள் வரவில்லை."
+    "noIncomingBookings": "இன்னும் முன்பதிவு கோரிக்கைகள் வரவில்லை.",
+    "equipmentDashboardTitle": "Equipment Owner Dashboard",
+    "labourDashboardTitle": "Labour Provider Dashboard",
+    "facilityDashboardTitle": "Facility Owner Dashboard"
   },
   "profile": {
     "title": "சுயவிவரம் & அமைப்புகள்",
@@ -607,7 +640,7 @@
     "missionTitle": "எங்கள் நோக்கம்",
     "missionDesc": "விதைப்பும் அறுவடையும் நேர முக்கியத்துவம் வாய்ந்தவை. உள்ளூர் லభ్యத்தையும் தெளிவான கூலியையும் காட்டி காலதாமதத்தைத் தவிர்க்கிறது.",
     "pillar1Title": "விவசாயிக்கு எளிமை",
-    "pillar1Desc": "6 இந்திய மொழிகள், எளிய மொபைல் OTP பதிவு, பெரிய பொத்தான்கள் மற்றும் பாதுகாப்பான டெமோ.",
+    "pillar1Desc": "Six regional Indian languages, instant mobile profile identification, large buttons, and an isolated interactive demo mode.",
     "pillar2Title": "GPS உள்ளூர் இணைப்பு",
     "pillar2Desc": "5–25 கி.மீ சுற்றளவில் சேவைகளைக் கண்டறிய ஒரே தட்டு GPS பின் வசதி.",
     "pillar3Title": "சேவையாளர்களுக்கு நியாயமான வருமானம்",
@@ -620,11 +653,11 @@
     "forFarmersTitle": "விவசாயிகளுக்கு",
     "forWorkersTitle": "தொழிலாளர்கள் & சேவையாளர்களுக்கு",
     "farmerSteps": [
-      "உங்கள் பிராந்திய மொழியைத் தேர்வுசெய்யுங்கள் (ஆங்கிலம், கன்னடம், இந்தி, தெலுங்கு, தமிழ், மராத்தி).",
-      "உங்கள் 10 இலக்க மொபைல் எண்ணுடன் விரைவாகப் பதிவு செய்யுங்கள் அல்லது உள்நுழையுங்கள்.",
-      "ஒரே தட்டில் பண்ணை GPS அல்லது உங்கள் கிராமம் மற்றும் மாவட்டத்தைத் தேர்ந்தெடுக்கவும்.",
-      "தினக்கூலியுடன் தொழிலாளர் கோரிக்கை இடுங்கள் அல்லது இயந்திரம், கிடங்கு பதிவு செய்யுங்கள்.",
-      "உங்கள் விவசாயி டாஷ்போர்டில் ஏற்ற தொழிலாளர்களையும் முன்பதிவுகளையும் நேரலையில் காண்க."
+      "Choose your regional language (English, Kannada, Hindi, Telugu, Tamil, or Marathi).",
+      "Enter your full name and 10-digit mobile number to open or resume your profile.",
+      "Capture your farm GPS location in one tap or select your village and district.",
+      "Post a labour request with daily wage, or book nearby machinery and cold storage.",
+      "Track accepted workers and manage bookings live from your Farmer Dashboard."
     ],
     "providerSteps": [
       "உங்கள் தொழிலாளர், இயந்திர உரிமையாளர் அல்லது சேமிப்பு நிலைய சுயவிவரத்தை உருவாக்குங்கள்.",
@@ -693,6 +726,14 @@
     "delete": "நீக்கு",
     "add": "சேர்",
     "errorGeneric": "ஏதோ தவறு நடந்துவிட்டது. மீண்டும் முயற்சிக்கவும்.",
-    "saveSuccess": "வெற்றிகரமாகச் சேமிக்கப்பட்டது!"
+    "saveSuccess": "வெற்றிகரமாகச் சேமிக்கப்பட்டது!",
+    "home": "Home",
+    "backHome": "Back to Home",
+    "continue": "Continue",
+    "pleaseWait": "Please wait..."
+  },
+  "voice": {
+    "on": "Voice On",
+    "off": "Voice Readout"
   }
 }

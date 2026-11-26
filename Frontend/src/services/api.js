@@ -4,6 +4,7 @@ const defaultBaseUrl = import.meta.env.DEV ? 'http://localhost:5000/api' : '/api
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || defaultBaseUrl,
+  withCredentials: true,
 });
 
 api.interceptors.request.use((config) => {
@@ -20,11 +21,8 @@ api.interceptors.response.use(
     const status = error?.response?.status;
     const url = error?.config?.url || '';
     const isAuthAttempt =
-      url.includes('/auth/login') ||
-      url.includes('/auth/otp') ||
-      url.includes('/auth/send-otp') ||
-      url.includes('/auth/verify-otp') ||
-      url.includes('/auth/register');
+      url.includes('/profiles/continue') ||
+      url.includes('/auth/me');
 
     if (status === 401 && !isAuthAttempt && typeof window !== 'undefined') {
       localStorage.removeItem('agriconnect_token');

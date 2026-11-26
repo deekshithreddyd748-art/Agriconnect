@@ -46,16 +46,20 @@ const userSchema = new mongoose.Schema(
       trim: true,
       default: undefined,
     },
-    mobileVerified: {
+    supabaseProfileId: {
+      type: String,
+      unique: true,
+      sparse: true,
+      trim: true,
+      default: undefined,
+    },
+    pendingRoleSelection: {
       type: Boolean,
       default: false,
     },
     password: {
       type: String,
-      required: function passwordRequired() {
-        return !this.mobileVerified;
-      },
-      minlength: 6,
+      required: false,
       select: false,
     },
     role: {

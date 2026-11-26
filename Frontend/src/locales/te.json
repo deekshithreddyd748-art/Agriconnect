@@ -10,8 +10,8 @@
     "howItWorks": "ఇది ఎలా పనిచేస్తుంది",
     "about": "మా గురించి",
     "services": "సేవలు",
-    "login": "లాగిన్",
-    "register": "AgriConnect లో చేరండి",
+    "login": "Continue",
+    "register": "Get Started",
     "dashboard": "డ్యాష్‌బోర్డ్",
     "requestLabour": "కార్మికులను అడగండి",
     "myBookings": "నా బుకింగ్స్",
@@ -22,7 +22,8 @@
     "profile": "ప్రొఫైల్",
     "logout": "లాగ్ అవుట్",
     "language": "భాష",
-    "toggleMenu": "మెను తెరవండి"
+    "toggleMenu": "మెను తెరవండి",
+    "continueProfile": "Start / Continue"
   },
   "roles": {
     "farmer": "రైతు",
@@ -195,7 +196,7 @@
     "step4VerifySubtitle": "+91 {{mobile}} కు పంపిన 6-అంకెల కోడ్‌ను నమోదు చేయండి.",
     "step5ProfileTitle": "మీ ప్రాథమిక ప్రొఫైల్ పూర్తి చేయండి",
     "step5ProfileSubtitle": "దగ్గరలోని కార్మికులు మరియు యంత్ర యజమానులకు మీ పొలం వివరాలు తెలియడానికి.",
-    "mobileLabel": "10-అంకెల మొబైల్ నంబర్",
+    "mobileLabel": "Mobile Number",
     "mobilePlaceholder": "ఉదా: 9876543210",
     "sendOtp": "OTP పంపండి",
     "sendingOtp": "SMS OTP పంపబడుతోంది...",
@@ -213,7 +214,7 @@
     "useEmailLogin": "ఇమెయిల్ లాగిన్ ఉపయోగించండి",
     "verifiedBadge": "మొబైల్ ధృవీకరించబడింది",
     "fullName": "పూర్తి పేరు",
-    "fullNamePlaceholder": "మీ పూర్తి పేరు నమోదు చేయండి",
+    "fullNamePlaceholder": "e.g., Ramesh Gowda",
     "village": "గ్రామం / పట్టణం",
     "villagePlaceholder": "ఉదా: నర్సంపేట",
     "district": "జిల్లా",
@@ -255,14 +256,43 @@
     "otpVerifyFailed": "చెల్లని లేదా గడువు ముగిసిన OTP.",
     "newVerifiedPrompt": "మొబైల్ ధృవీకరించబడింది! కొనసాగడానికి మీ చిన్న ప్రొఫైల్ పూర్తి చేయండి.",
     "roles": {
-      "farmerTitle": "రైతు",
-      "farmerDesc": "మీ గ్రామం దగ్గర కూలీలను అడగండి, ట్రాక్టర్ అద్దెకు తీసుకోండి మరియు గోదాము బుక్ చేయండి.",
-      "labourTitle": "వ్యవసాయ కార్మికుడు",
-      "labourDesc": "దగ్గరలోని పొలం పనులు కనుగొనండి, అంగీకరించండి మరియు రోజువారీ కూలీ పొందండి.",
-      "equipmentTitle": "యంత్ర యజమాని",
-      "equipmentDesc": "అద్దె అభ్యర్థనలు పొందడానికి ట్రాక్టర్లు మరియు యంత్రాలను జాబితా చేయండి.",
-      "facilityTitle": "నిల్వ కేంద్ర యజమాని",
-      "facilityDesc": "కోల్డ్ స్టోరేజ్, ధాన్యం గిడ్డంగి మరియు ఆరబెట్టే సౌకర్యాలు అందించండి."
+      "farmerTitle": "Farmer",
+      "farmerDesc": "Hire equipment, hire labour, and store produce",
+      "labourTitle": "Labour Provider",
+      "labourDesc": "Offer skilled or general farm labour services",
+      "equipmentTitle": "Equipment Owner",
+      "equipmentDesc": "List tractors, harvesters, and implements for rent",
+      "facilityTitle": "Facility Owner",
+      "facilityDesc": "List storage, cold storage, and processing facilities"
+    },
+    "profileEntryTitle": "Enter your name and mobile number to continue",
+    "profileEntrySubtitle": "No password or OTP required. Returning mobile numbers open your existing AgriConnect profile automatically.",
+    "demoNotice": "Quick profile identification (Demo mode — no SMS OTP or password verification required).",
+    "fullNameLabel": "Full Name",
+    "mobileTenDigitsHint": "Enter your 10-digit Indian mobile number (starts with 6–9).",
+    "emailOptionalLabel": "Email Address (Optional)",
+    "emailOptionalPlaceholder": "Optional — e.g., name@example.com",
+    "existingProfileFound": "An existing profile was found for this mobile number.",
+    "existingProfilePreservedHint": "Your previously saved name, email, and role were preserved and not overwritten.",
+    "savedRoleLabel": "Saved Role",
+    "continueExistingProfile": "Continue with Existing Profile",
+    "editDetails": "Change Number",
+    "profileCreatedToast": "Profile saved, {{name}}! Choose your role to continue.",
+    "profileSubmitFailed": "Unable to continue with your profile right now.",
+    "tryLabourDemo": "Try Interactive Labour Demo",
+    "chooseRoleTitle": "Select Your Role on AgriConnect",
+    "chooseRoleSubtitle": "Choose how you want to use AgriConnect. You can explore matching tools on your dashboard.",
+    "chooseRoleShort": "Select Role",
+    "greetingUser": "Namaste, {{name}}",
+    "switchMobile": "Use Another Mobile",
+    "continueToDashboard": "Continue to Dashboard",
+    "roleSavedSuccess": "Welcome! Entering {{role}} dashboard.",
+    "roleSaveFailed": "Could not save your selected role.",
+    "errors": {
+      "fullNameRequired": "Please enter your full name (at least 2 letters).",
+      "fullNameTooLong": "Full name must be under 100 characters.",
+      "mobileInvalid": "Please enter a valid 10-digit Indian mobile number starting with 6–9.",
+      "emailInvalid": "Please enter a valid email address or leave this field blank."
     }
   },
   "dashboard": {
@@ -585,7 +615,10 @@
     "rejectBookingBtn": "తిరస్కరించండి",
     "completeBookingBtn": "పూర్తయినట్లు గుర్తించండి",
     "noListings": "మీరు ఇంకా ఏ జాబితానూ సృష్టించలేదు.",
-    "noIncomingBookings": "ఇంకా బుకింగ్ అభ్యర్థనలు రాలేదు."
+    "noIncomingBookings": "ఇంకా బుకింగ్ అభ్యర్థనలు రాలేదు.",
+    "equipmentDashboardTitle": "Equipment Owner Dashboard",
+    "labourDashboardTitle": "Labour Provider Dashboard",
+    "facilityDashboardTitle": "Facility Owner Dashboard"
   },
   "profile": {
     "title": "ప్రొఫైల్ & సెట్టింగ్స్",
@@ -607,7 +640,7 @@
     "missionTitle": "మా లక్ష్యం",
     "missionDesc": "ప్రతి విత్తే మరియు కోత సమయం ఎంతో విలువైనది. నిజమైన స్థానిక లభ్యత మరియు పారదర్శక ధరలను చూపి ఆలస్యాన్ని తగ్గిస్తుంది.",
     "pillar1Title": "రైతు స్నేహపూర్వకత",
-    "pillar1Desc": "6 భారతీయ భాషలు, సులభ మొబైల్ OTP నమోదు, పెద్ద బటన్లు మరియు ప్రత్యేక డెమో మోడ్.",
+    "pillar1Desc": "Six regional Indian languages, instant mobile profile identification, large buttons, and an isolated interactive demo mode.",
     "pillar2Title": "GPS-ఆధారిత స్థానిక శోధన",
     "pillar2Desc": "5–25 కి.మీ పరిధిలో సేవలను కనుగొనేందుకు వన్-ట్యాప్ GPS పిన్ విధానం.",
     "pillar3Title": "సేవా దాతలకు న్యాయమైన ఆదాయం",
@@ -620,11 +653,11 @@
     "forFarmersTitle": "రైతుల కోసం",
     "forWorkersTitle": "వ్యవసాయ కార్మికులు & సేవా దాతల కోసం",
     "farmerSteps": [
-      "మీ ప్రాంతీయ భాషను ఎంచుకోండి (ఇంగ్లీష్, కన్నడ, హిందీ, తెలుగు, తమిళం, మరాఠీ).",
-      "మీ 10-అంకెల మొబైల్ నంబర్‌తో త్వరగా నమోదు చేసుకోండి లేదా సైన్ ఇన్ చేయండి.",
-      "ఒకే ట్యాప్‌లో పొలం GPS స్థానం లేదా మీ గ్రామం మరియు జిల్లాను ఎంచుకోండి.",
-      "రోజువారీ కూలీతో కార్మిక అభ్యర్థన పోస్ట్ చేయండి లేదా యంత్రాలు, కోల్డ్ స్టోరేజ్ బుక్ చేయండి.",
-      "రైతు డ్యాష్‌బోర్డ్‌లో ఖరారైన కార్మికులు మరియు బుకింగ్స్ లైవ్‌లో చూడండి."
+      "Choose your regional language (English, Kannada, Hindi, Telugu, Tamil, or Marathi).",
+      "Enter your full name and 10-digit mobile number to open or resume your profile.",
+      "Capture your farm GPS location in one tap or select your village and district.",
+      "Post a labour request with daily wage, or book nearby machinery and cold storage.",
+      "Track accepted workers and manage bookings live from your Farmer Dashboard."
     ],
     "providerSteps": [
       "మీ కార్మికుడు, యంత్ర యజమాని లేదా నిల్వ కేంద్ర ప్రొఫైల్ సృష్టించండి.",
@@ -693,6 +726,14 @@
     "delete": "తొలగించండి",
     "add": "జోడించండి",
     "errorGeneric": "ఏదో తప్పు జరిగింది. దయచేసి మళ్ళీ ప్రయత్నించండి.",
-    "saveSuccess": "విజయవంతంగా సేవ్ చేయబడింది!"
+    "saveSuccess": "విజయవంతంగా సేవ్ చేయబడింది!",
+    "home": "Home",
+    "backHome": "Back to Home",
+    "continue": "Continue",
+    "pleaseWait": "Please wait..."
+  },
+  "voice": {
+    "on": "Voice On",
+    "off": "Voice Readout"
   }
 }

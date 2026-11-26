@@ -1,395 +1,446 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import {
-  LogIn,
   Sprout,
-  KeyRound,
+  User as UserIcon,
   Phone,
-  ShieldCheck,
+  Mail,
+  ArrowLeft,
   ArrowRight,
-  AlertTriangle,
-  Clock,
-  Edit3,
+  AlertCircle,
+  CheckCircle2,
+  Volume2,
+  VolumeX,
   PlayCircle,
+  Loader2,
+  Info,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getErrorMessage } from '../../services/api';
 import { PROVIDER_ROLES } from '../../utils/constants';
+import { useVoiceAssist } from '../../hooks/useVoiceAssist';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
 
-const DEMO_ACCOUNTS = [
-  { roleKey: 'roles.farmer', email: 'farmer@agriconnect.in', pass: 'Demo@123' },
-  { roleKey: 'roles.equipment_owner', email: 'owner@agriconnect.in', pass: 'Demo@123' },
-  { roleKey: 'roles.labour_provider', email: 'labour@agriconnect.in', pass: 'Demo@123' },
-  { roleKey: 'roles.facility_operator', email: 'facility@agriconnect.in', pass: 'Demo@123' },
-  { roleKey: 'roles.admin', email: 'admin@agriconnect.in', pass: 'Admin@123' },
-];
-
 export default function LoginPage() {
-  const { login, getOtpStatus, sendOtp, verifyOtp } = useAuth();
+  const { user, continueProfile } = useAuth();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
+  const { supported: voiceSupported, voiceEnabled, setVoiceEnabled, speak, stop } =
+    useVoiceAssist();
 
-  const [mode, setMode] = useState('otp');
+  const [fullName, setFullName] = useState('');
+  const [mobileNumber, setMobileNumber] = useState('');
+  const [email, setEmail] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [serverError, setServerError] = useState('');
+  const [conflictData, setConflictData] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const [mobileNumber, setMobileNumber] = useState('');
-  const [otpSent, setOtpSent] = useState(false);
-  const [otp, setOtp] = useState('');
-  const [cooldownSeconds, setCooldownSeconds] = useState(0);
-  const [smsNotConfigured, setSmsNotConfigured] = useState(false);
-
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    formState: { errors },
-  } = useForm();
-
   useEffect(() => {
-    getOtpStatus()
-      .then((info) => {
-        if (info && info.configured === false) {
-          setSmsNotConfigured(true);
-        }
-      })
-      .catch(() => {});
-  }, []);
+    if (!user) return;
+    if (!user.role) {
+      navigate('/select-role', { replace: true });
+    } else if (user.role === 'admin') {
+      navigate('/admin', { replace: true });
+    } else if (PROVIDER_ROLES.includes(user.role)) {
+      navigate('/provider/dashboard', { replace: true });
+    } else {
+      navigate('/farmer/dashboard', { replace: true });
+    }
+  }, [user, navigate]);
 
-  useEffect(() => {
-    if (cooldownSeconds <= 0) return undefined;
-    const id = setInterval(() => {
-      setCooldownSeconds((prev) => (prev > 1 ? prev - 1 : 0));
-    }, 1000);
-    return () => clearInterval(id);
-  }, [cooldownSeconds]);
+  function validateInputs() {
+    const errors = {};
+    const cleanedName = fullName.trim().replace(/\s+/g, ' ');
+    const cleanedMobile = mobileNumber.replace(/\D/g, '');
+    const cleanedEmail = email.trim();
 
-  function redirectByRole(user) {
+    if (cleanedName.length < 2) {
+      errors.fullName = t('auth.errors.fullNameRequired');
+    } else if (cleanedName.length > 100) {
+      errors.fullName = t('auth.errors.fullNameTooLong');
+    }
+
+    if (!/^[6-9]\d{9}$/.test(cleanedMobile)) {
+      errors.mobileNumber = t('auth.errors.mobileInvalid');
+    }
+
+    if (cleanedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanedEmail)) {
+      errors.email = t('auth.errors.emailInvalid');
+    }
+
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0 && voiceEnabled) {
+      speak(Object.values(errors)[0]);
+    }
+    return {
+      valid: Object.keys(errors).length === 0,
+      cleanedName,
+      cleanedMobile,
+      cleanedEmail,
+    };
+  }
+
+  function navigateAfterProfile(resData) {
+    if (resData?.isNew || resData?.requiresRoleSelection || !resData?.user?.role) {
+      navigate('/select-role', { replace: true });
+      return;
+    }
+
     const from = location.state?.from?.pathname;
-    if (from) return navigate(from, { replace: true });
-    if (user.role === 'admin') return navigate('/admin', { replace: true });
-    if (PROVIDER_ROLES.includes(user.role)) {
-      return navigate('/provider/dashboard', { replace: true });
-    }
-    return navigate('/farmer/dashboard', { replace: true });
-  }
-
-  async function onEmailSubmit(data) {
-    setSubmitting(true);
-    try {
-      const loggedInUser = await login(data.email, data.password);
-      toast.success(t('auth.welcomeBack', { name: loggedInUser.name }));
-      redirectByRole(loggedInUser);
-    } catch (err) {
-      toast.error(getErrorMessage(err, t('auth.loginFailed')));
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  async function handleSendOtp(e) {
-    if (e) e.preventDefault();
-    const digits = mobileNumber.replace(/\D/g, '');
-    if (!/^[6-9]\d{9}$/.test(digits)) {
-      toast.error(t('auth.invalidMobile'));
+    if (from && from !== '/login' && from !== '/register' && from !== '/select-role') {
+      navigate(from, { replace: true });
       return;
     }
-    setSubmitting(true);
-    setSmsNotConfigured(false);
-    try {
-      const res = await sendOtp(digits);
-      setOtpSent(true);
-      setCooldownSeconds(res.cooldownSeconds || 60);
-      toast.success(t('auth.otpSentBanner', { mobile: digits }));
-    } catch (err) {
-      const code = err?.response?.data?.code;
-      const retryAfter = err?.response?.data?.retryAfterSeconds;
-      if (code === 'SMS_NOT_CONFIGURED') {
-        setSmsNotConfigured(true);
-        toast.error(t('auth.smsPendingTitle'));
-      } else if (code === 'OTP_COOLDOWN' && retryAfter) {
-        setCooldownSeconds(retryAfter);
-        setOtpSent(true);
-        toast.error(t('auth.resendCountdown', { seconds: retryAfter }));
-      } else {
-        toast.error(getErrorMessage(err, t('auth.otpFailed')));
-      }
-    } finally {
-      setSubmitting(false);
+
+    if (PROVIDER_ROLES.includes(resData.user.role)) {
+      navigate('/provider/dashboard', { replace: true });
+    } else {
+      navigate('/farmer/dashboard', { replace: true });
     }
   }
 
-  async function handleVerifyOtp(e) {
-    e.preventDefault();
-    const digits = mobileNumber.replace(/\D/g, '');
-    if (!/^\d{6}$/.test(otp.trim())) {
-      toast.error(t('auth.invalidOtp'));
-      return;
-    }
+  async function submitProfile(confirmUseExisting = false) {
+    const { valid, cleanedName, cleanedMobile, cleanedEmail } = validateInputs();
+    if (!valid) return;
+
+    setServerError('');
     setSubmitting(true);
     try {
-      const res = await verifyOtp(digits, otp.trim());
-      if (res.isNewUser) {
-        toast.success(t('auth.newVerifiedPrompt'));
-        navigate('/register');
+      const resData = await continueProfile({
+        fullName: cleanedName,
+        mobileNumber: cleanedMobile,
+        email: cleanedEmail,
+        confirmUseExisting,
+      });
+
+      if (resData?.conflictDetected && !confirmUseExisting) {
+        setConflictData(resData);
+        if (voiceEnabled) {
+          speak(t('auth.existingProfileFound'));
+        }
         return;
       }
-      toast.success(t('auth.welcomeBack', { name: res.user.name }));
-      redirectByRole(res.user);
+
+      setConflictData(null);
+      const displayName = resData?.user?.name || resData?.profile?.full_name || cleanedName;
+      toast.success(
+        resData?.isNew
+          ? t('auth.profileCreatedToast', { name: displayName })
+          : t('auth.welcomeBack', { name: displayName })
+      );
+      navigateAfterProfile(resData);
     } catch (err) {
-      toast.error(getErrorMessage(err, t('auth.otpVerifyFailed')));
+      const msg = getErrorMessage(err, t('auth.profileSubmitFailed'));
+      setServerError(msg);
+      toast.error(msg);
+      if (voiceEnabled) {
+        speak(msg);
+      }
     } finally {
       setSubmitting(false);
     }
   }
 
-  function fillDemo(account) {
-    setMode('email');
-    setValue('email', account.email);
-    setValue('password', account.pass);
+  function handleFormSubmit(e) {
+    e.preventDefault();
+    submitProfile(false);
+  }
+
+  function toggleVoice() {
+    const next = !voiceEnabled;
+    setVoiceEnabled(next);
+    if (next) {
+      speak(`${t('auth.profileEntryTitle')}. ${t('auth.profileEntrySubtitle')}`);
+    } else {
+      stop();
+    }
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10">
-      <div className="flex justify-end mb-4">
-        <LanguageSwitcher />
-      </div>
+    <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center px-4 py-10 bg-gradient-to-br from-earth-50 via-white to-forest-50">
+      <div className="w-full max-w-lg bg-white rounded-3xl border border-earth-200 shadow-lg p-6 sm:p-9 space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <Link
+            to="/"
+            className="inline-flex items-center gap-1.5 px-3 min-h-[44px] rounded-xl border border-earth-200 text-sm font-semibold text-slate-700 hover:bg-earth-50"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            {t('common.backHome')}
+          </Link>
 
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
-        <div className="md:col-span-7 bg-white rounded-3xl border border-earth-200 p-6 sm:p-8 shadow-sm">
-          <div className="flex items-center gap-2.5 mb-5">
-            <div className="w-11 h-11 rounded-xl bg-forest-700 text-white flex items-center justify-center">
-              <Sprout className="w-5 h-5" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-forest-900">
-                {t('auth.loginTitle')}
-              </h1>
-              <p className="text-xs text-slate-500">{t('auth.loginSubtitle')}</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-1.5 bg-earth-100 p-1 rounded-2xl mb-6">
-            <button
-              type="button"
-              onClick={() => setMode('otp')}
-              className={`min-h-[44px] rounded-xl text-xs sm:text-sm font-bold transition-colors ${
-                mode === 'otp'
-                  ? 'bg-forest-700 text-white shadow-sm'
-                  : 'text-slate-700 hover:bg-white/60'
-              }`}
-            >
-              {t('auth.mobileOtpTab')}
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode('email')}
-              className={`min-h-[44px] rounded-xl text-xs sm:text-sm font-bold transition-colors ${
-                mode === 'email'
-                  ? 'bg-forest-700 text-white shadow-sm'
-                  : 'text-slate-700 hover:bg-white/60'
-              }`}
-            >
-              {t('auth.emailPassTab')}
-            </button>
-          </div>
-
-          {mode === 'otp' ? (
-            !otpSent ? (
-              <form onSubmit={handleSendOtp} className="space-y-4">
-                {smsNotConfigured && (
-                  <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 space-y-2.5">
-                    <div className="flex items-start gap-2 text-amber-900">
-                      <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                      <div>
-                        <div className="font-bold text-xs sm:text-sm">
-                          {t('auth.smsPendingTitle')}
-                        </div>
-                        <p className="text-xs text-amber-800 mt-0.5 leading-relaxed">
-                          {t('auth.smsPendingDesc')}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setMode('email')}
-                        className="px-3 min-h-[36px] rounded-xl bg-forest-700 text-white text-xs font-bold"
-                      >
-                        {t('auth.useEmailLogin')}
-                      </button>
-                      <Link
-                        to="/labour-demo"
-                        className="px-3 min-h-[36px] inline-flex items-center gap-1 rounded-xl bg-white border border-amber-300 text-amber-900 text-xs font-bold"
-                      >
-                        <PlayCircle className="w-3.5 h-3.5" />
-                        {t('auth.tryDemoInstead')}
-                      </Link>
-                    </div>
-                  </div>
-                )}
-
-                <div>
-                  <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-1.5">
-                    <Phone className="w-4 h-4 text-forest-700" />
-                    {t('auth.mobileLabel')}
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <span className="px-3.5 min-h-[48px] inline-flex items-center rounded-xl bg-earth-100 border border-earth-200 font-bold text-slate-700">
-                      +91
-                    </span>
-                    <input
-                      type="tel"
-                      inputMode="numeric"
-                      maxLength={10}
-                      required
-                      value={mobileNumber}
-                      onChange={(e) => setMobileNumber(e.target.value.replace(/\D/g, ''))}
-                      placeholder={t('auth.mobilePlaceholder')}
-                      className="flex-1 min-h-[48px] px-3.5 rounded-xl border border-earth-200 text-base font-semibold"
-                    />
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="w-full min-h-[48px] inline-flex items-center justify-center gap-2 rounded-xl bg-forest-700 hover:bg-forest-800 text-white font-bold text-sm disabled:opacity-60"
-                >
-                  {submitting ? t('auth.sendingOtp') : t('auth.sendOtp')}
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </form>
-            ) : (
-              <form onSubmit={handleVerifyOtp} className="space-y-4">
-                <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 font-semibold">
-                  {t('auth.otpSentBanner', { mobile: mobileNumber })}
-                </div>
-                <div>
-                  <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-1.5">
-                    <ShieldCheck className="w-4 h-4 text-forest-700" />
-                    {t('auth.otpLabel')} (+91 {mobileNumber})
-                  </label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={6}
-                    required
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                    placeholder={t('auth.otpPlaceholder')}
-                    className="w-full min-h-[50px] px-4 rounded-xl border-2 border-earth-200 text-center text-xl font-extrabold tracking-[0.35em]"
-                  />
-                </div>
-                <div className="flex items-center justify-between text-xs">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setOtpSent(false);
-                      setOtp('');
-                    }}
-                    className="inline-flex items-center gap-1 text-forest-700 font-bold hover:underline"
-                  >
-                    <Edit3 className="w-3.5 h-3.5" />
-                    {t('auth.editMobile')}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={cooldownSeconds > 0 || submitting}
-                    onClick={() => handleSendOtp()}
-                    className="inline-flex items-center gap-1 text-forest-700 font-bold disabled:text-slate-400"
-                  >
-                    <Clock className="w-3.5 h-3.5" />
-                    {cooldownSeconds > 0
-                      ? t('auth.resendCountdown', { seconds: cooldownSeconds })
-                      : t('auth.resendOtp')}
-                  </button>
-                </div>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="w-full min-h-[48px] inline-flex items-center justify-center gap-2 rounded-xl bg-forest-700 hover:bg-forest-800 text-white font-bold text-sm disabled:opacity-60"
-                >
-                  {submitting ? t('auth.verifyingOtp') : t('auth.verifyOtp')}
-                </button>
-              </form>
-            )
-          ) : (
-            <form onSubmit={handleSubmit(onEmailSubmit)} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  {t('auth.email')}
-                </label>
-                <input
-                  type="email"
-                  {...register('email', { required: t('auth.requiredField') })}
-                  placeholder={t('auth.emailPlaceholder')}
-                  className="w-full min-h-[46px] px-3.5 rounded-xl border border-earth-200 text-sm"
-                />
-                {errors.email && (
-                  <p className="text-xs text-rose-600 mt-1">{errors.email.message}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  {t('auth.password')}
-                </label>
-                <input
-                  type="password"
-                  {...register('password', { required: t('auth.requiredField') })}
-                  placeholder="••••••••"
-                  className="w-full min-h-[46px] px-3.5 rounded-xl border border-earth-200 text-sm"
-                />
-                {errors.password && (
-                  <p className="text-xs text-rose-600 mt-1">{errors.password.message}</p>
-                )}
-              </div>
-
+          <div className="flex items-center gap-2">
+            {voiceSupported && (
               <button
-                type="submit"
-                disabled={submitting}
-                className="w-full min-h-[48px] inline-flex items-center justify-center gap-2 rounded-xl bg-forest-700 hover:bg-forest-800 text-white font-semibold text-sm transition-colors disabled:opacity-60"
+                type="button"
+                onClick={toggleVoice}
+                aria-pressed={voiceEnabled}
+                className={`inline-flex items-center gap-1.5 px-3 min-h-[44px] rounded-xl border text-xs font-semibold transition-colors ${
+                  voiceEnabled
+                    ? 'border-forest-600 bg-forest-50 text-forest-800'
+                    : 'border-earth-200 bg-white text-slate-700 hover:bg-earth-50'
+                }`}
               >
-                <LogIn className="w-4 h-4" />
-                {submitting ? t('auth.loggingIn') : t('auth.loginBtn')}
+                {voiceEnabled ? (
+                  <Volume2 className="w-4 h-4 text-forest-700" />
+                ) : (
+                  <VolumeX className="w-4 h-4 text-slate-500" />
+                )}
+                {voiceEnabled ? t('voice.on') : t('voice.off')}
               </button>
-            </form>
-          )}
+            )}
+            <LanguageSwitcher />
+          </div>
+        </div>
 
-          <p className="mt-5 text-sm text-center text-slate-600">
-            <Link to="/register" className="text-forest-700 font-bold hover:underline">
-              {t('auth.newAccountLink')}
-            </Link>
+        <div className="text-center space-y-2">
+          <div className="w-12 h-12 mx-auto rounded-2xl bg-forest-700 text-white flex items-center justify-center shadow-sm">
+            <Sprout className="w-6 h-6" />
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-forest-900">
+            {t('auth.profileEntryTitle')}
+          </h1>
+          <p className="text-sm sm:text-base text-slate-600 max-w-md mx-auto">
+            {t('auth.profileEntrySubtitle')}
           </p>
         </div>
 
-        <div className="md:col-span-5 bg-forest-50 rounded-3xl border border-forest-200 p-6 space-y-3">
-          <div className="flex items-center gap-2 text-forest-900 font-bold">
-            <KeyRound className="w-4 h-4" />
-            {t('auth.demoAccountsHeading')}
+        <div className="flex items-start gap-2.5 rounded-2xl bg-forest-50/70 border border-forest-200 p-3.5 text-xs sm:text-sm text-forest-900">
+          <Info className="w-4 h-4 text-forest-700 shrink-0 mt-0.5" />
+          <span>{t('auth.demoNotice')}</span>
+        </div>
+
+        {serverError && (
+          <div
+            role="alert"
+            className="flex items-start gap-2.5 rounded-2xl bg-rose-50 border border-rose-200 p-3.5 text-sm text-rose-800"
+          >
+            <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-rose-600" />
+            <span>{serverError}</span>
           </div>
-          <div className="space-y-2 pt-1">
-            {DEMO_ACCOUNTS.map((acc) => (
+        )}
+
+        {conflictData?.profile && (
+          <div
+            role="status"
+            className="rounded-2xl border-2 border-amber-300 bg-amber-50 p-4 space-y-3"
+          >
+            <div className="flex items-start gap-2.5">
+              <AlertCircle className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
+              <div>
+                <h2 className="font-bold text-amber-950 text-base">
+                  {t('auth.existingProfileFound')}
+                </h2>
+                <p className="text-xs sm:text-sm text-amber-900 mt-0.5">
+                  {t('auth.existingProfilePreservedHint')}
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-xl bg-white border border-amber-200 p-3 text-sm space-y-1">
+              <div>
+                <span className="text-slate-500">{t('auth.fullNameLabel')}: </span>
+                <span className="font-bold text-slate-900">
+                  {conflictData.profile.full_name}
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-500">{t('auth.mobileLabel')}: </span>
+                <span className="font-semibold text-slate-900">
+                  +91 {conflictData.profile.mobile_number}
+                </span>
+              </div>
+              {conflictData.profile.email && (
+                <div>
+                  <span className="text-slate-500">{t('auth.emailOptionalLabel')}: </span>
+                  <span className="font-medium text-slate-900">
+                    {conflictData.profile.email}
+                  </span>
+                </div>
+              )}
+              {conflictData.profile.role && (
+                <div>
+                  <span className="text-slate-500">{t('auth.savedRoleLabel')}: </span>
+                  <span className="font-bold text-forest-800">
+                    {t(`roles.${conflictData.profile.role}`, conflictData.profile.role)}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2">
               <button
-                key={acc.email}
                 type="button"
-                onClick={() => fillDemo(acc)}
-                className="w-full text-left p-3 min-h-[48px] rounded-xl bg-white border border-forest-200 hover:border-forest-500 transition-colors"
+                disabled={submitting}
+                onClick={() => submitProfile(true)}
+                className="flex-1 min-h-[48px] px-4 rounded-xl bg-forest-700 hover:bg-forest-800 text-white font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-60"
               >
-                <div className="text-sm font-semibold text-forest-900">
-                  {t(acc.roleKey)}
-                </div>
-                <div className="text-xs text-slate-500 mt-0.5">
-                  {acc.email} · {acc.pass}
-                </div>
+                <CheckCircle2 className="w-4 h-4" />
+                {t('auth.continueExistingProfile')}
               </button>
-            ))}
+              <button
+                type="button"
+                onClick={() => setConflictData(null)}
+                className="min-h-[48px] px-4 rounded-xl border border-amber-300 bg-white hover:bg-amber-100/50 text-amber-900 font-semibold text-sm"
+              >
+                {t('auth.editDetails')}
+              </button>
+            </div>
           </div>
+        )}
+
+        <form onSubmit={handleFormSubmit} noValidate className="space-y-4">
+          <div>
+            <label
+              htmlFor="profile-full-name"
+              className="block text-sm font-bold text-slate-800 mb-1.5"
+            >
+              {t('auth.fullNameLabel')} <span className="text-rose-600">*</span>
+            </label>
+            <div className="relative">
+              <UserIcon className="w-5 h-5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                id="profile-full-name"
+                type="text"
+                autoComplete="name"
+                value={fullName}
+                onChange={(e) => {
+                  setFullName(e.target.value);
+                  setFieldErrors((prev) => ({ ...prev, fullName: '' }));
+                  setConflictData(null);
+                }}
+                placeholder={t('auth.fullNamePlaceholder')}
+                className={`w-full min-h-[52px] pl-11 pr-4 rounded-xl border text-base focus:outline-none focus:ring-2 ${
+                  fieldErrors.fullName
+                    ? 'border-rose-400 focus:ring-rose-300 bg-rose-50/40'
+                    : 'border-earth-300 focus:ring-forest-600'
+                }`}
+                aria-invalid={Boolean(fieldErrors.fullName)}
+                aria-describedby={fieldErrors.fullName ? 'full-name-error' : undefined}
+              />
+            </div>
+            {fieldErrors.fullName && (
+              <p id="full-name-error" className="text-xs font-medium text-rose-600 mt-1">
+                {fieldErrors.fullName}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label
+              htmlFor="profile-mobile"
+              className="block text-sm font-bold text-slate-800 mb-1.5"
+            >
+              {t('auth.mobileLabel')} <span className="text-rose-600">*</span>
+            </label>
+            <div className="flex">
+              <span className="inline-flex items-center gap-1.5 px-4 min-h-[52px] rounded-l-xl border border-r-0 border-earth-300 bg-earth-100 text-forest-900 font-bold text-base">
+                <Phone className="w-4 h-4 text-forest-700" />
+                +91
+              </span>
+              <input
+                id="profile-mobile"
+                type="tel"
+                inputMode="numeric"
+                autoComplete="tel-national"
+                maxLength={10}
+                value={mobileNumber}
+                onChange={(e) => {
+                  const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 10);
+                  setMobileNumber(digitsOnly);
+                  setFieldErrors((prev) => ({ ...prev, mobileNumber: '' }));
+                  setConflictData(null);
+                }}
+                placeholder="9876543210"
+                className={`flex-1 min-h-[52px] px-4 rounded-r-xl border text-lg tracking-wider font-semibold focus:outline-none focus:ring-2 ${
+                  fieldErrors.mobileNumber
+                    ? 'border-rose-400 focus:ring-rose-300 bg-rose-50/40'
+                    : 'border-earth-300 focus:ring-forest-600'
+                }`}
+                aria-invalid={Boolean(fieldErrors.mobileNumber)}
+                aria-describedby={fieldErrors.mobileNumber ? 'mobile-error' : 'mobile-help'}
+              />
+            </div>
+            {fieldErrors.mobileNumber ? (
+              <p id="mobile-error" className="text-xs font-medium text-rose-600 mt-1">
+                {fieldErrors.mobileNumber}
+              </p>
+            ) : (
+              <p id="mobile-help" className="text-xs text-slate-500 mt-1">
+                {t('auth.mobileTenDigitsHint')}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label
+              htmlFor="profile-email"
+              className="block text-sm font-bold text-slate-800 mb-1.5"
+            >
+              {t('auth.emailOptionalLabel')}
+            </label>
+            <div className="relative">
+              <Mail className="w-5 h-5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                id="profile-email"
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setFieldErrors((prev) => ({ ...prev, email: '' }));
+                  setConflictData(null);
+                }}
+                placeholder={t('auth.emailOptionalPlaceholder')}
+                className={`w-full min-h-[52px] pl-11 pr-4 rounded-xl border text-base focus:outline-none focus:ring-2 ${
+                  fieldErrors.email
+                    ? 'border-rose-400 focus:ring-rose-300 bg-rose-50/40'
+                    : 'border-earth-300 focus:ring-forest-600'
+                }`}
+                aria-invalid={Boolean(fieldErrors.email)}
+                aria-describedby={fieldErrors.email ? 'email-error' : undefined}
+              />
+            </div>
+            {fieldErrors.email && (
+              <p id="email-error" className="text-xs font-medium text-rose-600 mt-1">
+                {fieldErrors.email}
+              </p>
+            )}
+          </div>
+
+          <button
+            type="submit"
+            disabled={submitting}
+            className="w-full min-h-[54px] rounded-xl bg-forest-700 hover:bg-forest-800 text-white font-bold text-base shadow-sm flex items-center justify-center gap-2 transition-colors disabled:opacity-60"
+          >
+            {submitting ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                {t('common.pleaseWait')}
+              </>
+            ) : (
+              <>
+                {t('common.continue')}
+                <ArrowRight className="w-5 h-5" />
+              </>
+            )}
+          </button>
+        </form>
+
+        <div className="pt-2 border-t border-earth-200 flex items-center justify-between text-sm">
+          <Link
+            to="/labour-demo"
+            className="inline-flex items-center gap-1.5 text-forest-700 font-semibold hover:underline"
+          >
+            <PlayCircle className="w-4 h-4" />
+            {t('auth.tryLabourDemo')}
+          </Link>
+          <Link to="/how-it-works" className="text-slate-600 hover:text-forest-700 font-medium">
+            {t('nav.howItWorks')}
+          </Link>
         </div>
       </div>
     </div>
